@@ -1,0 +1,25 @@
+# API
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+
+# Base de données
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# Validation / settings
+pydantic==2.10.3
+pydantic-settings==2.7.0
+
+# HTTP client (ingestion)
+httpx==0.28.1
+tenacity==9.0.0
+
+# Dev / tests
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.1
+black==24.10.0
+isort==5.13.2
+ruff==0.8.4

@@ -1,0 +1,45 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  build-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_API_URL: ${{ secrets.API_URL }}
+
+      - name: Deploy to Scaleway Object Storage
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        with:
+          args: --delete --cache-control "public,max-age=31536000,immutable"
+        env:
+          AWS_S3_BUCKET: an577-frontend
+          AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          AWS_S3_ENDPOINT: https://s3.fr-par.scw.cloud
+          SOURCE_DIR: frontend/build
