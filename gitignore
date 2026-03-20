@@ -1,0 +1,68 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ============================================================
+# Variables d'environnement — NE JAMAIS COMMITER
+# ============================================================
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# Terraform — NE JAMAIS COMMITER
+# ============================================================
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+
+# ============================================================
+# Node / Svelte / Frontend
+# ============================================================
+node_modules/
+.svelte-kit/
+frontend/build/
+frontend/dist/
+.vite/
+*.local
+
+# ============================================================
+# Éditeurs et OS
+# ============================================================
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+
+# ============================================================
+# Divers
+# ============================================================
+*.log
+*.tmp
