@@ -1,0 +1,19 @@
+# ─── Scaleway — Credentials ──────────────────────────────────────────────────
+# Obtenable sur : https://console.scaleway.com/iam/api-keys
+scw_access_key = "SCWXXXXXXXXXXXXXXXXX"
+scw_secret_key = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Obtenable sur : https://console.scaleway.com/project/settings
+scw_project_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# ─── Base de données PostgreSQL ───────────────────────────────────────────────
+db_password = "changeme_mot_de_passe_fort"
+# db_name   = "an577"   # valeur par défaut
+# db_user   = "an577"   # valeur par défaut
+
+# ─── Déploiement API ─────────────────────────────────────────────────────────
+# api_image_tag = "latest"   # valeur par défaut
+
+# ─── URLs open data (déjà renseignées par défaut dans variables.tf) ──────────
+# assemblee_api_base_url = "https://data.assemblee-nationale.fr/api"
+# gouv_api_base_url      = "https://www.data.gouv.fr/api/1"
