@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    scaleway = {
+      source  = "scaleway/scaleway"
+      version = "~> 2.46"
+    }
+  }
+}
+
 resource "scaleway_function_namespace" "main" {
   name       = "an577-ingestion"
   project_id = var.project_id

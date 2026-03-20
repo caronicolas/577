@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    scaleway = {
+      source  = "scaleway/scaleway"
+      version = "~> 2.46"
+    }
+  }
+}
+
 resource "scaleway_container_namespace" "main" {
   name       = "an577-api"
   project_id = var.project_id

@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    scaleway = {
+      source  = "scaleway/scaleway"
+      version = "~> 2.46"
+    }
+  }
+}
+
 resource "scaleway_rdb_instance" "main" {
   name           = "an577-db"
   node_type      = "DB-DEV-S"

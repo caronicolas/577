@@ -276,8 +276,16 @@ SCW_DEFAULT_REGION=fr-par
 - **SQLAlchemy 2.0 async** : utiliser `AsyncSession` et `async with session.begin()`. Le pattern synchrone `session.commit()` ne fonctionne pas en mode async.
 - **Terraform Scaleway** : le provider s'appelle `scaleway/scaleway` sur le registry. Ne pas utiliser d'anciens providers communautaires.
 - **Positions des sièges hémicycle** : `hemicycle-seats.json` doit être extrait du SVG Regards Citoyens avant de démarrer `Hemicycle.svelte`. C'est un prérequis bloquant pour la page d'accueil et `/votes/:id`.
-
+- **Terraform HCL** : ne jamais utiliser de `;` comme séparateur dans 
+  les blocs — toujours des retours à la ligne. Un bloc variable correct :
+  variable "nom" {
+    type      = string
+    sensitive = true
+  }
 ---
+- **Terraform provider Scaleway** : le source est `scaleway/scaleway`, 
+  jamais `hashicorp/scaleway`. À déclarer dans chaque module 
+  qui utilise le provider.
 
 ## Workflow recommandé avec Claude Code
 

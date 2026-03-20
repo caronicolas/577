@@ -1,0 +1,9 @@
+# ─── Backend Terraform — Scaleway Object Storage ─────────────────────────────
+# Copier vers backend.tfvars (non commité) et renseigner les valeurs réelles.
+# Utilisation : terraform init -backend-config=backend.tfvars
+#
+# Les credentials ici sont des API keys Scaleway avec droits Object Storage.
+# Obtenable sur : https://console.scaleway.com/iam/api-keys
+
+access_key = "SCWXXXXXXXXXXXXXXXXX"
+secret_key = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
