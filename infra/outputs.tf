@@ -1,6 +1,11 @@
 output "api_url" {
-  description = "URL publique de l'API FastAPI"
-  value       = module.containers.api_url
+  description = "Endpoint du Serverless Container API (FastAPI)"
+  value       = "https://${module.containers.api_url}"
+}
+
+output "frontend_url" {
+  description = "Endpoint du frontend (Scaleway Object Storage)"
+  value       = "https://an577-frontend.s3-website.fr-par.scw.cloud"
 }
 
 output "db_endpoint" {
