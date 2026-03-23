@@ -1,6 +1,10 @@
 name: Deploy Infrastructure
 
 on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/deploy-infra.yml'
   push:
     branches: [main]
     paths:
@@ -47,6 +51,7 @@ jobs:
   apply:
     name: Terraform Apply
     needs: plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     defaults:

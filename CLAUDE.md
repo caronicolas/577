@@ -291,6 +291,7 @@ SCW_DEFAULT_REGION=fr-par
   Format des URLs : https://data.assemblee-nationale.fr/static/openData/repository/17/[type]/[jeu]/json/
   Ne jamais inventer un endpoint /api/v2/...
 - **asyncpg + paramètre NULL** : asyncpg ne peut pas inférer le type d'un paramètre utilisé dans `CASE WHEN $n IS NULL` ou dans un `EXISTS` subquery avec le même `$n` qu'une colonne `VARCHAR` → `AmbiguousParameterError`. Solution : filtrer les valeurs nullables en Python avant l'insert et garder le SQL simple (pas de logique conditionnelle sur les paramètres). Ne jamais écrire `CASE WHEN :x IS NULL THEN NULL WHEN EXISTS(...id = :x)` avec SQLAlchemy text().
+- **Svelte 5 CSS** : pas de css() helper ni de CSS-in-JS. Tout le CSS dans des blocs <style> standard. Styles dynamiques via attribut style= ou classes conditionnelles.
 
 ## Workflow recommandé avec Claude Code
 

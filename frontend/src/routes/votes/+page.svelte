@@ -1,6 +1,7 @@
 <script lang="ts">
   let search = $state('');
   let scrutins = $state<any[]>([]);
+  let total = $state(0);
   let loading = $state(true);
 
   $effect(() => {
@@ -10,7 +11,8 @@
     fetch(`/api/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
-        scrutins = data;
+        scrutins = data.items ?? [];
+        total = data.total ?? 0;
         loading = false;
       });
   });
@@ -33,7 +35,7 @@
 {#if loading}
   <p class="muted">Chargement…</p>
 {:else}
-  <p class="count">{scrutins.length} scrutin{scrutins.length > 1 ? 's' : ''}</p>
+  <p class="count">{total} scrutin{total > 1 ? 's' : ''}</p>
   <ul class="list">
     {#each scrutins as s (s.id)}
       <li>

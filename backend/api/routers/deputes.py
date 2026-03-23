@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date
 from typing import Optional
 
@@ -44,6 +45,14 @@ class DeputeListItem(BaseModel):
 class DeputeListResponse(BaseModel):
     total: int
     items: list[DeputeListItem]
+
+
+class Activite(BaseModel):
+    date: date
+    present: bool
+    a_vote: bool
+    a_pris_parole: bool
+    a_depose_amendement: bool
 
 
 class ScrutinResume(BaseModel):
@@ -228,3 +237,80 @@ async def get_depute(
             for a in amendements
         ],
     )
+
+
+@router.get("/{depute_id}/activites", response_model=list[Activite])
+async def get_activites(
+    depute_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[Activite]:
+    """
+    Retourne l'activité journalière du député sur la 17e législature (depuis 2024-06-18).
+    Agrège votes (VoteDepute + Scrutin) et amendements (Amendement).
+    Seules les dates avec au moins un événement sont retournées.
+    """
+    depute_exists = (
+        await session.execute(select(Depute.id).where(Depute.id == depute_id))
+    ).scalar_one_or_none()
+    if depute_exists is None:
+        raise HTTPException(status_code=404, detail="Député introuvable")
+
+    leg_debut = date(2024, 6, 18)
+    today = date.today()
+
+    # -- Votes : date + position -------------------------------------------------
+    votes_stmt = (
+        select(Scrutin.date_seance, VoteDepute.position)
+        .join(VoteDepute, VoteDepute.scrutin_id == Scrutin.id)
+        .where(
+            VoteDepute.depute_id == depute_id,
+            Scrutin.date_seance >= leg_debut,
+            Scrutin.date_seance <= today,
+        )
+    )
+    votes_rows = (await session.execute(votes_stmt)).all()
+
+    # -- Amendements : date de dépôt ---------------------------------------------
+    amend_stmt = (
+        select(Amendement.date_depot)
+        .where(
+            Amendement.depute_id == depute_id,
+            Amendement.date_depot >= leg_debut,
+            Amendement.date_depot <= today,
+            Amendement.date_depot.is_not(None),
+        )
+    )
+    amend_rows = (await session.execute(amend_stmt)).scalars().all()
+
+    # -- Agrégation par date -----------------------------------------------------
+    # Chaque entrée : {a_vote, present, a_depose_amendement}
+    # position "nonVotant" = présent en séance mais n'a pas voté (ex : délégation de vote)
+    # position "pour"/"contre"/"abstention" = a effectivement voté
+    POSITIONS_VOTEES = {"pour", "contre", "abstention"}
+
+    data: dict[date, dict] = defaultdict(lambda: {
+        "present": False,
+        "a_vote": False,
+        "a_depose_amendement": False,
+    })
+
+    for d, position in votes_rows:
+        entry = data[d]
+        entry["present"] = True
+        if position.lower() in POSITIONS_VOTEES:
+            entry["a_vote"] = True
+
+    for d in amend_rows:
+        data[d]["a_depose_amendement"] = True
+        data[d]["present"] = True  # déposer un amendement implique une présence
+
+    return [
+        Activite(
+            date=d,
+            present=v["present"],
+            a_vote=v["a_vote"],
+            a_pris_parole=False,  # pas encore en base
+            a_depose_amendement=v["a_depose_amendement"],
+        )
+        for d, v in sorted(data.items())
+    ]

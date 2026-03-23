@@ -7,18 +7,30 @@
   let depute = $state<any>(null);
   let amendements = $state<any[]>([]);
   let votes = $state<any[]>([]);
+  let activites = $state<any[]>([]);
   let loading = $state(true);
+  let error = $state<string | null>(null);
 
   $effect(() => {
     loading = true;
+    error = null;
     Promise.all([
       fetch(`/api/deputes/${id}`).then((r) => r.json()),
       fetch(`/api/amendements?depute_id=${id}&limit=100`).then((r) => r.json()),
-    ]).then(([d, a]) => {
-      depute = d;
-      amendements = a;
-      loading = false;
-    });
+      fetch(`/api/votes?depute_id=${id}&limit=100`).then((r) => r.json()),
+      fetch(`/api/deputes/${id}/activites`).then((r) => r.json()),
+    ])
+      .then(([d, a, v, act]) => {
+        depute = d;
+        amendements = Array.isArray(a) ? a : (a.items ?? []);
+        votes = Array.isArray(v) ? v : (v.items ?? []);
+        activites = Array.isArray(act) ? act : (act.items ?? []);
+        loading = false;
+      })
+      .catch(() => {
+        error = 'Impossible de charger les données.';
+        loading = false;
+      });
   });
 </script>
 
@@ -28,6 +40,8 @@
 
 {#if loading}
   <p class="muted">Chargement…</p>
+{:else if error}
+  <p class="muted">{error}</p>
 {:else if depute}
   <div class="profile">
     {#if depute.url_photo}
@@ -63,7 +77,28 @@
 
   <section class="section">
     <h2>Activité — 17<sup>e</sup> législature</h2>
-    <ActivityCalendar activites={[]} dateDebut="2024-06-18" dateFin={new Date().toISOString().slice(0, 10)} />
+    <ActivityCalendar {activites} dateDebut="2024-06-18" dateFin={new Date().toISOString().slice(0, 10)} />
+  </section>
+
+  <section class="section">
+    <h2>Votes ({votes.length})</h2>
+    {#if votes.length === 0}
+      <p class="muted">Aucun vote enregistré.</p>
+    {:else}
+      <ul class="list">
+        {#each votes as v (v.id)}
+          <li class="list-item">
+            <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
+              <span class="vote-date">{v.date ? v.date.slice(0, 10) : '—'}</span>
+              <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
+              {#if v.position}
+                <span class="vote-pos" data-pos={v.position}>{v.position}</span>
+              {/if}
+            </a>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   </section>
 
   <section class="section">
@@ -155,6 +190,34 @@
 
   .amend-sort[data-sort="Adopté"] { color: var(--color-vote); }
   .amend-sort[data-sort="Rejeté"] { color: var(--color-absent); }
+
+  .vote-link {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.875rem;
+    color: var(--color-text);
+    width: 100%;
+  }
+
+  .vote-link:hover { text-decoration: none; background: var(--color-bg); }
+
+  .vote-date {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    width: 80px;
+  }
+
+  .vote-titre { flex: 1; }
+
+  .vote-pos { flex-shrink: 0; font-size: 0.75rem; font-weight: 600; }
+  .vote-pos[data-pos="Pour"] { color: var(--color-vote); }
+  .vote-pos[data-pos="Contre"] { color: var(--color-absent); }
+  .vote-pos[data-pos="Abstention"] { color: var(--color-text-muted); }
 
   .muted { color: var(--color-text-muted); }
 </style>

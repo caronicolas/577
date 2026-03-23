@@ -27,6 +27,7 @@ class ScrutinListItem(BaseModel):
     nombre_pours: Optional[int]
     nombre_contres: Optional[int]
     nombre_abstentions: Optional[int]
+    position: Optional[str] = None  # présent uniquement quand filtré par depute_id
 
 
 class ScrutinListResponse(BaseModel):
@@ -68,20 +69,64 @@ class ScrutinDetail(BaseModel):
 @router.get("", response_model=ScrutinListResponse)
 async def list_scrutins(
     q: Optional[str] = Query(None, description="Recherche dans le titre"),
+    depute_id: Optional[str] = Query(None, description="Filtrer par député (retourne sa position)"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> ScrutinListResponse:
-    base = select(Scrutin)
+    if depute_id:
+        # Jointure avec VoteDepute pour filtrer et récupérer la position
+        base = (
+            select(Scrutin, VoteDepute.position)
+            .join(VoteDepute, VoteDepute.scrutin_id == Scrutin.id)
+            .where(VoteDepute.depute_id == depute_id)
+        )
+        if q:
+            base = base.where(Scrutin.titre.ilike(f"%{q}%"))
+
+        total = (
+            await session.execute(select(func.count()).select_from(base.subquery()))
+        ).scalar_one()
+
+        rows = (
+            await session.execute(
+                base.order_by(Scrutin.date_seance.desc()).limit(limit).offset(offset)
+            )
+        ).all()
+
+        return ScrutinListResponse(
+            total=total,
+            items=[
+                ScrutinListItem(
+                    id=s.id,
+                    numero=s.numero,
+                    titre=s.titre,
+                    date_seance=s.date_seance,
+                    sort=s.sort,
+                    nombre_votants=s.nombre_votants,
+                    nombre_pours=s.nombre_pours,
+                    nombre_contres=s.nombre_contres,
+                    nombre_abstentions=s.nombre_abstentions,
+                    position=position,
+                )
+                for s, position in rows
+            ],
+        )
+
+    # Pas de filtre depute_id : liste générale
+    base_q = select(Scrutin)
     if q:
-        base = base.where(Scrutin.titre.ilike(f"%{q}%"))
+        base_q = base_q.where(Scrutin.titre.ilike(f"%{q}%"))
 
     total = (
-        await session.execute(select(func.count()).select_from(base.subquery()))
+        await session.execute(select(func.count()).select_from(base_q.subquery()))
     ).scalar_one()
 
-    stmt = base.order_by(Scrutin.date_seance.desc()).limit(limit).offset(offset)
-    scrutins = (await session.execute(stmt)).scalars().all()
+    scrutins = (
+        await session.execute(
+            base_q.order_by(Scrutin.date_seance.desc()).limit(limit).offset(offset)
+        )
+    ).scalars().all()
 
     return ScrutinListResponse(
         total=total,

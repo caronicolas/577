@@ -3,6 +3,7 @@
   let groupe = $state('');
   let departement = $state('');
   let deputes = $state<any[]>([]);
+  let total = $state(0);
   let loading = $state(true);
 
   $effect(() => {
@@ -10,12 +11,14 @@
     if (search) params.set('q', search);
     if (groupe) params.set('groupe', groupe);
     if (departement) params.set('departement', departement);
+    params.set('limit', '200');
 
     loading = true;
     fetch(`/api/deputes?${params}`)
       .then((r) => r.json())
       .then((data) => {
-        deputes = data;
+        deputes = data.items ?? [];
+        total = data.total ?? 0;
         loading = false;
       });
   });
@@ -52,7 +55,7 @@
 {#if loading}
   <p class="muted">Chargement…</p>
 {:else}
-  <p class="count">{deputes.length} député{deputes.length > 1 ? 's' : ''}</p>
+  <p class="count">{total} député{total > 1 ? 's' : ''}</p>
   <ul class="grid">
     {#each deputes as d (d.id)}
       <li>
@@ -64,11 +67,11 @@
           {/if}
           <div class="info">
             <strong>{d.prenom} {d.nom_de_famille ?? d.nom}</strong>
-            {#if d.groupe_sigle}
+            {#if d.groupe?.sigle}
               <span
                 class="badge"
-                style="background: {d.groupe_couleur ?? 'var(--color-border)'}"
-              >{d.groupe_sigle}</span>
+                style="background: {d.groupe.couleur ?? 'var(--color-border)'}"
+              >{d.groupe.sigle}</span>
             {/if}
             <span class="circ">{d.nom_circonscription ?? ''}</span>
           </div>
