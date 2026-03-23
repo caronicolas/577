@@ -23,7 +23,7 @@ resource "scaleway_registry_namespace" "main" {
 resource "scaleway_container" "api" {
   name           = "api"
   namespace_id   = scaleway_container_namespace.main.id
-  registry_image = "${scaleway_registry_namespace.main.endpoint}/api:${var.image_tag}"
+  registry_image = "${scaleway_registry_namespace.main.endpoint}/api-577:${var.image_tag}"
   port           = 8000
   cpu_limit      = 280
   memory_limit   = 512
