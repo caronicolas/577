@@ -5,6 +5,6 @@ output "api_url" {
 
 output "db_endpoint" {
   description = "Endpoint PostgreSQL managé"
-  value       = module.database.endpoint
+  value       = module.database.host
   sensitive   = true
 }

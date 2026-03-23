@@ -1,108 +1,230 @@
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from db.models import Depute
+from db.models import Amendement, Depute, Scrutin, VoteDepute
 from db.session import get_session
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Schémas
+# ---------------------------------------------------------------------------
+
+
+class GroupeResume(BaseModel):
+    id: str
+    sigle: str
+    libelle: str
+    couleur: Optional[str]
+
+    model_config = {"from_attributes": True}
 
 
 class DeputeListItem(BaseModel):
     id: str
     nom: str
     prenom: str
-    groupe_sigle: Optional[str]
-    groupe_couleur: Optional[str]
     num_departement: Optional[str]
     nom_circonscription: Optional[str]
+    num_circonscription: Optional[int]
     place_hemicycle: Optional[int]
     url_photo: Optional[str]
+    groupe: Optional[GroupeResume]
 
     model_config = {"from_attributes": True}
 
 
-class DeputeDetail(DeputeListItem):
-    sexe: Optional[str]
-    profession: Optional[str]
-    twitter: Optional[str]
+class DeputeListResponse(BaseModel):
+    total: int
+    items: list[DeputeListItem]
+
+
+class ScrutinResume(BaseModel):
+    id: str
+    numero: int
+    titre: str
+    date_seance: date
+    sort: Optional[str]
+    position: str  # pour / contre / abstention / nonVotant
+
+
+class AmendementResume(BaseModel):
+    id: str
+    numero: Optional[str]
+    titre: Optional[str]
+    texte_legislature: Optional[str]
+    date_depot: Optional[date]
+    sort: Optional[str]
     url_an: Optional[str]
-    mandat_debut: Optional[str]
-    mandat_fin: Optional[str]
 
 
-@router.get("", response_model=list[DeputeListItem])
+class DeputeDetail(BaseModel):
+    id: str
+    nom: str
+    prenom: str
+    nom_de_famille: str
+    sexe: Optional[str]
+    date_naissance: Optional[date]
+    profession: Optional[str]
+    num_departement: Optional[str]
+    nom_circonscription: Optional[str]
+    num_circonscription: Optional[int]
+    place_hemicycle: Optional[int]
+    url_photo: Optional[str]
+    url_an: Optional[str]
+    twitter: Optional[str]
+    mandat_debut: Optional[date]
+    mandat_fin: Optional[date]
+    legislature: int
+    groupe: Optional[GroupeResume]
+    votes: list[ScrutinResume]
+    amendements: list[AmendementResume]
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("", response_model=DeputeListResponse)
 async def list_deputes(
-    groupe: Optional[str] = Query(None),
-    departement: Optional[str] = Query(None),
-    q: Optional[str] = Query(None),
+    groupe: Optional[str] = Query(None, description="Sigle du groupe parlementaire"),
+    departement: Optional[str] = Query(None, description="Numéro de département"),
+    q: Optional[str] = Query(None, description="Recherche par nom"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
-) -> list[DeputeListItem]:
-    stmt = (
+) -> DeputeListResponse:
+    base = (
         select(Depute)
         .options(selectinload(Depute.groupe))
         .where(Depute.mandat_fin.is_(None))
-        .order_by(Depute.nom_de_famille)
     )
     if groupe:
-        stmt = stmt.where(Depute.groupe.has(sigle=groupe))
+        base = base.where(Depute.groupe.has(sigle=groupe))
     if departement:
-        stmt = stmt.where(Depute.num_departement == departement)
+        base = base.where(Depute.num_departement == departement)
     if q:
-        stmt = stmt.where(Depute.nom.ilike(f"%{q}%"))
+        base = base.where(Depute.nom.ilike(f"%{q}%"))
 
-    result = await session.execute(stmt)
-    deputes = result.scalars().all()
+    total_result = await session.execute(
+        select(func.count()).select_from(base.subquery())
+    )
+    total = total_result.scalar_one()
 
-    return [
+    stmt = base.order_by(Depute.nom_de_famille).limit(limit).offset(offset)
+    rows = (await session.execute(stmt)).scalars().all()
+
+    items = [
         DeputeListItem(
             id=d.id,
             nom=d.nom,
             prenom=d.prenom,
-            groupe_sigle=d.groupe.sigle if d.groupe else None,
-            groupe_couleur=d.groupe.couleur if d.groupe else None,
             num_departement=d.num_departement,
             nom_circonscription=d.nom_circonscription,
+            num_circonscription=d.num_circonscription,
             place_hemicycle=d.place_hemicycle,
             url_photo=d.url_photo,
+            groupe=GroupeResume(
+                id=d.groupe.id,
+                sigle=d.groupe.sigle,
+                libelle=d.groupe.libelle,
+                couleur=d.groupe.couleur,
+            ) if d.groupe else None,
         )
-        for d in deputes
+        for d in rows
     ]
+    return DeputeListResponse(total=total, items=items)
 
 
 @router.get("/{depute_id}", response_model=DeputeDetail)
 async def get_depute(
     depute_id: str,
+    votes_limit: int = Query(50, ge=1, le=200, description="Nombre de votes à retourner"),
+    amendements_limit: int = Query(50, ge=1, le=200, description="Nombre d'amendements à retourner"),
     session: AsyncSession = Depends(get_session),
 ) -> DeputeDetail:
+    # Député + groupe
     stmt = (
         select(Depute)
         .options(selectinload(Depute.groupe))
         .where(Depute.id == depute_id)
     )
-    result = await session.execute(stmt)
-    depute = result.scalar_one_or_none()
+    depute = (await session.execute(stmt)).scalar_one_or_none()
     if depute is None:
         raise HTTPException(status_code=404, detail="Député introuvable")
+
+    # Votes : jointure avec Scrutin pour avoir les métadonnées, triés par date desc
+    votes_stmt = (
+        select(VoteDepute, Scrutin)
+        .join(Scrutin, VoteDepute.scrutin_id == Scrutin.id)
+        .where(VoteDepute.depute_id == depute_id)
+        .order_by(Scrutin.date_seance.desc())
+        .limit(votes_limit)
+    )
+    votes_rows = (await session.execute(votes_stmt)).all()
+
+    # Amendements triés par date de dépôt desc
+    amendements_stmt = (
+        select(Amendement)
+        .where(Amendement.depute_id == depute_id)
+        .order_by(Amendement.date_depot.desc())
+        .limit(amendements_limit)
+    )
+    amendements = (await session.execute(amendements_stmt)).scalars().all()
 
     return DeputeDetail(
         id=depute.id,
         nom=depute.nom,
         prenom=depute.prenom,
-        groupe_sigle=depute.groupe.sigle if depute.groupe else None,
-        groupe_couleur=depute.groupe.couleur if depute.groupe else None,
+        nom_de_famille=depute.nom_de_famille,
+        sexe=depute.sexe,
+        date_naissance=depute.date_naissance,
+        profession=depute.profession,
         num_departement=depute.num_departement,
         nom_circonscription=depute.nom_circonscription,
+        num_circonscription=depute.num_circonscription,
         place_hemicycle=depute.place_hemicycle,
         url_photo=depute.url_photo,
-        sexe=depute.sexe,
-        profession=depute.profession,
-        twitter=depute.twitter,
         url_an=depute.url_an,
-        mandat_debut=str(depute.mandat_debut) if depute.mandat_debut else None,
-        mandat_fin=str(depute.mandat_fin) if depute.mandat_fin else None,
+        twitter=depute.twitter,
+        mandat_debut=depute.mandat_debut,
+        mandat_fin=depute.mandat_fin,
+        legislature=depute.legislature,
+        groupe=GroupeResume(
+            id=depute.groupe.id,
+            sigle=depute.groupe.sigle,
+            libelle=depute.groupe.libelle,
+            couleur=depute.groupe.couleur,
+        ) if depute.groupe else None,
+        votes=[
+            ScrutinResume(
+                id=scrutin.id,
+                numero=scrutin.numero,
+                titre=scrutin.titre,
+                date_seance=scrutin.date_seance,
+                sort=scrutin.sort,
+                position=vote.position,
+            )
+            for vote, scrutin in votes_rows
+        ],
+        amendements=[
+            AmendementResume(
+                id=a.id,
+                numero=a.numero,
+                titre=a.titre,
+                texte_legislature=a.texte_legislature,
+                date_depot=a.date_depot,
+                sort=a.sort,
+                url_an=a.url_an,
+            )
+            for a in amendements
+        ],
     )

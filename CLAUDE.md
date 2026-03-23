@@ -283,9 +283,14 @@ SCW_DEFAULT_REGION=fr-par
     sensitive = true
   }
 ---
-- **Terraform provider Scaleway** : le source est `scaleway/scaleway`, 
-  jamais `hashicorp/scaleway`. À déclarer dans chaque module 
-  qui utilise le provider.
+- **Terraform provider Scaleway** : le source est `scaleway/scaleway`, jamais `hashicorp/scaleway`. À déclarer dans chaque module qui utilise le provider.
+- **Terraform variables** : les noms dans terraform.tfvars doivent correspondre exactement (casse incluse) aux déclarations dans variables.tf. Utiliser snake_case minuscules partout.
+- **-backend-config** : uniquement avec `terraform init`, jamais avec `plan` ou `apply`.
+- **Nom de la base de données** : `les577` partout dans .env, docker, et Scaleway Managed PostgreSQL.
+- **API Assemblée Nationale** : pas d'API REST paginée — les données sont des archives ZIP à télécharger et décompresser.
+  Format des URLs : https://data.assemblee-nationale.fr/static/openData/repository/17/[type]/[jeu]/json/
+  Ne jamais inventer un endpoint /api/v2/...
+- **asyncpg + paramètre NULL** : asyncpg ne peut pas inférer le type d'un paramètre utilisé dans `CASE WHEN $n IS NULL` ou dans un `EXISTS` subquery avec le même `$n` qu'une colonne `VARCHAR` → `AmbiguousParameterError`. Solution : filtrer les valeurs nullables en Python avant l'insert et garder le SQL simple (pas de logique conditionnelle sur les paramètres). Ne jamais écrire `CASE WHEN :x IS NULL THEN NULL WHEN EXISTS(...id = :x)` avec SQLAlchemy text().
 
 ## Workflow recommandé avec Claude Code
 
