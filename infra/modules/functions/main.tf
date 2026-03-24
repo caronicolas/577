@@ -7,18 +7,6 @@ terraform {
   }
 }
 
-# Bucket Object Storage pour stocker les ZIPs des fonctions
-resource "scaleway_object_bucket" "functions_zips" {
-  name       = "an577-functions-zips"
-  project_id = var.project_id
-  region     = "fr-par"
-
-  tags = {
-    project = "an577"
-    env     = "production"
-  }
-}
-
 resource "scaleway_function_namespace" "main" {
   name       = "an577-ingestion"
   project_id = var.project_id
@@ -29,17 +17,14 @@ resource "scaleway_function" "ingest_scrutins" {
   name         = "ingest-scrutins"
   namespace_id = scaleway_function_namespace.main.id
   runtime      = "python312"
-  handler      = "handler.handle"
+  handler      = "scrutins.handle"
   privacy      = "private"
   timeout      = 300
   max_scale    = 1
   memory_limit = 256
-
-  s3_zip {
-    bucket = scaleway_object_bucket.functions_zips.name
-    key    = var.scrutins_zip_key
-    region = "fr-par"
-  }
+  zip_file     = "../functions/scrutins.zip"
+  zip_hash     = filesha256("../functions/scrutins.zip")
+  deploy       = true
 
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
@@ -60,17 +45,14 @@ resource "scaleway_function" "ingest_deputes" {
   name         = "ingest-deputes"
   namespace_id = scaleway_function_namespace.main.id
   runtime      = "python312"
-  handler      = "handler.handle"
+  handler      = "deputes.handle"
   privacy      = "private"
   timeout      = 300
   max_scale    = 1
   memory_limit = 256
-
-  s3_zip {
-    bucket = scaleway_object_bucket.functions_zips.name
-    key    = var.deputes_zip_key
-    region = "fr-par"
-  }
+  zip_file     = "../functions/deputes.zip"
+  zip_hash     = filesha256("../functions/deputes.zip")
+  deploy       = true
 
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url

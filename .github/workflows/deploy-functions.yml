@@ -19,41 +19,9 @@ jobs:
         with:
           python-version: '3.12'
 
-      # -- Build ZIP ingest-scrutins ------------------------------------------
-      - name: Build ingest-scrutins.zip
-        run: |
-          mkdir -p /tmp/scrutins
-          cp backend/ingestion/assemblee/scrutins.py /tmp/scrutins/handler.py
-          cp -r backend/ingestion /tmp/scrutins/ingestion
-          pip install \
-            sqlalchemy asyncpg pydantic httpx \
-            --target /tmp/scrutins \
-            --quiet
-          cd /tmp/scrutins && zip -r /tmp/ingest-scrutins.zip . -x "**/__pycache__/*"
-
-      # -- Build ZIP ingest-deputes -------------------------------------------
-      - name: Build ingest-deputes.zip
-        run: |
-          mkdir -p /tmp/deputes
-          cp backend/ingestion/assemblee/deputes.py /tmp/deputes/handler.py
-          cp -r backend/ingestion /tmp/deputes/ingestion
-          pip install \
-            sqlalchemy asyncpg pydantic httpx \
-            --target /tmp/deputes \
-            --quiet
-          cd /tmp/deputes && zip -r /tmp/ingest-deputes.zip . -x "**/__pycache__/*"
-
-      # -- Upload ZIPs sur Scaleway Object Storage ----------------------------
-      - name: Upload ZIPs to Object Storage
-        uses: jakejarvis/s3-sync-action@v0.5.1
-        with:
-          args: --exclude "*" --include "ingest-*.zip"
-        env:
-          AWS_S3_BUCKET: an577-functions-zips
-          AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
-          AWS_S3_ENDPOINT: https://s3.fr-par.scw.cloud
-          SOURCE_DIR: /tmp
+      # -- Build ZIPs via le script de packaging --------------------------------
+      - name: Build ZIPs
+        run: bash backend/ingestion/build_functions.sh
 
       # -- Terraform apply module functions -----------------------------------
       - uses: hashicorp/setup-terraform@v3
