@@ -9,9 +9,9 @@ Usage :
 import logging
 import sys
 
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
 from ingestion.assemblee.deputes import handle
+
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 if __name__ == "__main__":
     result = handle({}, {})

@@ -14,7 +14,7 @@ import json
 import logging
 import os
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from typing import Optional
 
