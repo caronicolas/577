@@ -86,9 +86,7 @@ def _extract_votes(scrutin_id: str, ventilation: dict) -> list[VoteDepute]:
     """Extrait tous les votes nominatifs d'un scrutin."""
     votes: list[VoteDepute] = []
 
-    groupes = _as_list(
-        ventilation.get("organe", {}).get("groupes", {}).get("groupe")
-    )
+    groupes = _as_list(ventilation.get("organe", {}).get("groupes", {}).get("groupe"))
 
     for groupe in groupes:
         decompte = groupe.get("vote", {}).get("decompteNominatif", {})
@@ -108,16 +106,20 @@ def _extract_votes(scrutin_id: str, ventilation: dict) -> list[VoteDepute]:
             )
             for v in votants:
                 if isinstance(v, dict) and v.get("acteurRef"):
-                    votes.append(VoteDepute(
-                        scrutin_id=scrutin_id,
-                        depute_id=v["acteurRef"],
-                        position=position,
-                    ))
+                    votes.append(
+                        VoteDepute(
+                            scrutin_id=scrutin_id,
+                            depute_id=v["acteurRef"],
+                            position=position,
+                        )
+                    )
 
     return votes
 
 
-def _normalise_scrutin(scrutin: dict) -> tuple[ScrutinNormalise, list[VoteDepute]] | None:
+def _normalise_scrutin(
+    scrutin: dict,
+) -> tuple[ScrutinNormalise, list[VoteDepute]] | None:
     try:
         uid = scrutin.get("uid")
         if not uid:
@@ -140,9 +142,7 @@ def _normalise_scrutin(scrutin: dict) -> tuple[ScrutinNormalise, list[VoteDepute
         synthese = scrutin.get("syntheseVote", {})
         decompte = synthese.get("decompte", {})
 
-        url_an = (
-            f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/votes/{uid}"
-        )
+        url_an = f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/votes/{uid}"
 
         s = ScrutinNormalise(
             id=uid,
@@ -162,7 +162,9 @@ def _normalise_scrutin(scrutin: dict) -> tuple[ScrutinNormalise, list[VoteDepute
         return s, votes
 
     except Exception:
-        logger.warning("Normalisation échouée pour scrutin %s", scrutin.get("uid"), exc_info=True)
+        logger.warning(
+            "Normalisation échouée pour scrutin %s", scrutin.get("uid"), exc_info=True
+        )
         return None
 
 
@@ -221,7 +223,9 @@ async def fetch_all_scrutins() -> tuple[list[ScrutinNormalise], list[VoteDepute]
     scrutins, votes = _parse_zip(content)
     logger.info(
         "%d scrutins récupérés, %d votes nominatifs (législature %d)",
-        len(scrutins), len(votes), LEGISLATURE,
+        len(scrutins),
+        len(votes),
+        LEGISLATURE,
     )
     return scrutins, votes
 
@@ -230,7 +234,8 @@ async def fetch_all_scrutins() -> tuple[list[ScrutinNormalise], list[VoteDepute]
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT_SCRUTIN = text("""
+_UPSERT_SCRUTIN = text(
+    """
     INSERT INTO scrutins (
         id, numero, titre, date_seance, type_vote, sort,
         nombre_votants, nombre_pours, nombre_contres, nombre_abstentions,
@@ -250,19 +255,20 @@ _UPSERT_SCRUTIN = text("""
         nombre_abstentions = EXCLUDED.nombre_abstentions,
         url_an            = EXCLUDED.url_an,
         updated_at        = now()
-""")
+"""
+)
 
 _FETCH_DEPUTE_IDS = text("SELECT id FROM deputes")
 
-_DELETE_VOTES_BATCH = text(
-    "DELETE FROM votes_deputes WHERE scrutin_id = ANY(:ids)"
-)
+_DELETE_VOTES_BATCH = text("DELETE FROM votes_deputes WHERE scrutin_id = ANY(:ids)")
 
-_INSERT_VOTES_BULK = text("""
+_INSERT_VOTES_BULK = text(
+    """
     INSERT INTO votes_deputes (scrutin_id, depute_id, position)
     VALUES (:scrutin_id, :depute_id, :position)
     ON CONFLICT (scrutin_id, depute_id) DO UPDATE SET position = EXCLUDED.position
-""")
+"""
+)
 
 
 async def _load_depute_ids(session: AsyncSession) -> set[str]:
@@ -303,7 +309,11 @@ async def persist_all(
     for i in range(0, len(scrutin_ids), batch_size):
         batch = scrutin_ids[i : i + batch_size]
         rows = [
-            {"scrutin_id": v.scrutin_id, "depute_id": v.depute_id, "position": v.position}
+            {
+                "scrutin_id": v.scrutin_id,
+                "depute_id": v.depute_id,
+                "position": v.position,
+            }
             for sid in batch
             for v in votes_par_scrutin[sid]
             if v.depute_id in depute_ids
@@ -317,7 +327,9 @@ async def persist_all(
         total_votes += len(rows)
         logger.info(
             "Votes : %d/%d scrutins — %d votes insérés",
-            min(i + batch_size, len(scrutin_ids)), len(scrutin_ids), total_votes,
+            min(i + batch_size, len(scrutin_ids)),
+            len(scrutin_ids),
+            total_votes,
         )
 
     await engine.dispose()
@@ -342,7 +354,9 @@ async def _main() -> dict:
     count = await persist_all(scrutins, votes_par_scrutin)
     total_votes = sum(len(v) for v in votes_par_scrutin.values())
 
-    logger.info("Terminé : %d scrutins, %d votes nominatifs upsertés", count, total_votes)
+    logger.info(
+        "Terminé : %d scrutins, %d votes nominatifs upsertés", count, total_votes
+    )
     return {"status": "ok", "scrutins": count, "votes": total_votes}
 
 

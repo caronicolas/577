@@ -141,12 +141,16 @@ async def list_deputes(
             num_circonscription=d.num_circonscription,
             place_hemicycle=d.place_hemicycle,
             url_photo=d.url_photo,
-            groupe=GroupeResume(
-                id=d.groupe.id,
-                sigle=d.groupe.sigle,
-                libelle=d.groupe.libelle,
-                couleur=d.groupe.couleur,
-            ) if d.groupe else None,
+            groupe=(
+                GroupeResume(
+                    id=d.groupe.id,
+                    sigle=d.groupe.sigle,
+                    libelle=d.groupe.libelle,
+                    couleur=d.groupe.couleur,
+                )
+                if d.groupe
+                else None
+            ),
         )
         for d in rows
     ]
@@ -156,8 +160,12 @@ async def list_deputes(
 @router.get("/{depute_id}", response_model=DeputeDetail)
 async def get_depute(
     depute_id: str,
-    votes_limit: int = Query(50, ge=1, le=200, description="Nombre de votes à retourner"),
-    amendements_limit: int = Query(50, ge=1, le=200, description="Nombre d'amendements à retourner"),
+    votes_limit: int = Query(
+        50, ge=1, le=200, description="Nombre de votes à retourner"
+    ),
+    amendements_limit: int = Query(
+        50, ge=1, le=200, description="Nombre d'amendements à retourner"
+    ),
     session: AsyncSession = Depends(get_session),
 ) -> DeputeDetail:
     # Député + groupe
@@ -207,12 +215,16 @@ async def get_depute(
         mandat_debut=depute.mandat_debut,
         mandat_fin=depute.mandat_fin,
         legislature=depute.legislature,
-        groupe=GroupeResume(
-            id=depute.groupe.id,
-            sigle=depute.groupe.sigle,
-            libelle=depute.groupe.libelle,
-            couleur=depute.groupe.couleur,
-        ) if depute.groupe else None,
+        groupe=(
+            GroupeResume(
+                id=depute.groupe.id,
+                sigle=depute.groupe.sigle,
+                libelle=depute.groupe.libelle,
+                couleur=depute.groupe.couleur,
+            )
+            if depute.groupe
+            else None
+        ),
         votes=[
             ScrutinResume(
                 id=scrutin.id,
@@ -271,14 +283,11 @@ async def get_activites(
     votes_rows = (await session.execute(votes_stmt)).all()
 
     # -- Amendements : date de dépôt ---------------------------------------------
-    amend_stmt = (
-        select(Amendement.date_depot)
-        .where(
-            Amendement.depute_id == depute_id,
-            Amendement.date_depot >= leg_debut,
-            Amendement.date_depot <= today,
-            Amendement.date_depot.is_not(None),
-        )
+    amend_stmt = select(Amendement.date_depot).where(
+        Amendement.depute_id == depute_id,
+        Amendement.date_depot >= leg_debut,
+        Amendement.date_depot <= today,
+        Amendement.date_depot.is_not(None),
     )
     amend_rows = (await session.execute(amend_stmt)).scalars().all()
 
@@ -288,11 +297,13 @@ async def get_activites(
     # position "pour"/"contre"/"abstention" = a effectivement voté
     POSITIONS_VOTEES = {"pour", "contre", "abstention"}
 
-    data: dict[date, dict] = defaultdict(lambda: {
-        "present": False,
-        "a_vote": False,
-        "a_depose_amendement": False,
-    })
+    data: dict[date, dict] = defaultdict(
+        lambda: {
+            "present": False,
+            "a_vote": False,
+            "a_depose_amendement": False,
+        }
+    )
 
     for d, position in votes_rows:
         entry = data[d]

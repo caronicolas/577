@@ -61,8 +61,12 @@ class AmendementDetail(BaseModel):
 @router.get("", response_model=AmendementListResponse)
 async def list_amendements(
     depute_id: Optional[str] = Query(None, description="Filtrer par député"),
-    texte: Optional[str] = Query(None, description="Filtrer par référence de texte législatif"),
-    sort: Optional[str] = Query(None, description="Filtrer par sort (Adopté, Rejeté, Retiré…)"),
+    texte: Optional[str] = Query(
+        None, description="Filtrer par référence de texte législatif"
+    ),
+    sort: Optional[str] = Query(
+        None, description="Filtrer par sort (Adopté, Rejeté, Retiré…)"
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
@@ -127,11 +131,15 @@ async def get_amendement(
         sort=amendement.sort,
         url_an=amendement.url_an,
         legislature=amendement.legislature,
-        depute=DeputeResume(
-            id=depute.id,
-            nom=depute.nom,
-            url_photo=depute.url_photo,
-            groupe_sigle=organe.sigle if organe else None,
-            groupe_couleur=organe.couleur if organe else None,
-        ) if depute else None,
+        depute=(
+            DeputeResume(
+                id=depute.id,
+                nom=depute.nom,
+                url_photo=depute.url_photo,
+                groupe_sigle=organe.sigle if organe else None,
+                groupe_couleur=organe.couleur if organe else None,
+            )
+            if depute
+            else None
+        ),
     )

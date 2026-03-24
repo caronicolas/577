@@ -75,7 +75,9 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
             return None
 
         identification = amend.get("identification", {})
-        numero = identification.get("numeroLong") or identification.get("numeroOrdreDepot")
+        numero = identification.get("numeroLong") or identification.get(
+            "numeroOrdreDepot"
+        )
 
         # Titre = article visé par l'amendement
         division = amend.get("pointeurFragmentTexte", {}).get("division", {})
@@ -88,7 +90,9 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
         cycle = amend.get("cycleDeVie", {})
         date_depot_raw = cycle.get("dateDepot")
         try:
-            date_depot = date.fromisoformat(str(date_depot_raw)[:10]) if date_depot_raw else None
+            date_depot = (
+                date.fromisoformat(str(date_depot_raw)[:10]) if date_depot_raw else None
+            )
         except (ValueError, TypeError):
             date_depot = None
 
@@ -96,7 +100,9 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
         if _nil(sort):
             sort = None
 
-        url_an = f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/amendements/{uid}"
+        url_an = (
+            f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/amendements/{uid}"
+        )
 
         # Auteur : seulement si c'est un député (pas le gouvernement)
         auteur = amend.get("signataires", {}).get("auteur", {})
@@ -117,7 +123,9 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
             depute_id=depute_id,
         )
     except Exception:
-        logger.warning("Normalisation échouée pour amendement %s", amend.get("uid"), exc_info=True)
+        logger.warning(
+            "Normalisation échouée pour amendement %s", amend.get("uid"), exc_info=True
+        )
         return None
 
 
@@ -171,7 +179,8 @@ async def fetch_all_amendements() -> list[AmendementNormalise]:
     amendements = _parse_zip(content)
     logger.info(
         "%d amendements récupérés (législature %d)",
-        len(amendements), LEGISLATURE,
+        len(amendements),
+        LEGISLATURE,
     )
     return amendements
 
@@ -182,7 +191,8 @@ async def fetch_all_amendements() -> list[AmendementNormalise]:
 
 _FETCH_DEPUTE_IDS = text("SELECT id FROM deputes")
 
-_UPSERT = text("""
+_UPSERT = text(
+    """
     INSERT INTO amendements (
         id, numero, titre, texte_legislature, date_depot, sort,
         url_an, depute_id, legislature, updated_at
@@ -199,7 +209,8 @@ _UPSERT = text("""
         url_an            = EXCLUDED.url_an,
         depute_id         = EXCLUDED.depute_id,
         updated_at        = now()
-""")
+"""
+)
 
 
 async def _load_depute_ids(session: AsyncSession) -> set[str]:
@@ -233,7 +244,8 @@ async def persist_all(
         total += len(rows)
         logger.info(
             "Amendements : %d/%d traités",
-            min(i + batch_size, len(amendements)), len(amendements),
+            min(i + batch_size, len(amendements)),
+            len(amendements),
         )
 
     await engine.dispose()

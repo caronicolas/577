@@ -77,7 +77,9 @@ def _normalise_organe(organe: dict) -> OrganeNormalise | None:
             legislature=legislature,
         )
     except Exception:
-        logger.warning("Normalisation échouée pour organe %s", organe.get("uid"), exc_info=True)
+        logger.warning(
+            "Normalisation échouée pour organe %s", organe.get("uid"), exc_info=True
+        )
         return None
 
 
@@ -103,7 +105,9 @@ def _parse_zip(content: bytes) -> list[OrganeNormalise]:
     organes: list[OrganeNormalise] = []
 
     with zipfile.ZipFile(io.BytesIO(content)) as zf:
-        organe_files = [n for n in zf.namelist() if "/organe/" in n and n.endswith(".json")]
+        organe_files = [
+            n for n in zf.namelist() if "/organe/" in n and n.endswith(".json")
+        ]
         logger.info("%d fichiers organe dans le ZIP", len(organe_files))
 
         for name in organe_files:
@@ -126,7 +130,11 @@ async def fetch_all_organes() -> list[OrganeNormalise]:
         content = await _download_zip(client)
 
     organes = _parse_zip(content)
-    logger.info("%d groupes parlementaires récupérés (législature %d)", len(organes), LEGISLATURE)
+    logger.info(
+        "%d groupes parlementaires récupérés (législature %d)",
+        len(organes),
+        LEGISLATURE,
+    )
     return organes
 
 
@@ -134,7 +142,8 @@ async def fetch_all_organes() -> list[OrganeNormalise]:
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT = text("""
+_UPSERT = text(
+    """
     INSERT INTO organes (id, sigle, libelle, couleur, legislature, updated_at)
     VALUES (:id, :sigle, :libelle, :couleur, :legislature, now())
     ON CONFLICT (id) DO UPDATE SET
@@ -143,7 +152,8 @@ _UPSERT = text("""
         couleur    = EXCLUDED.couleur,
         legislature = EXCLUDED.legislature,
         updated_at = now()
-""")
+"""
+)
 
 
 async def upsert_organes(organes: list[OrganeNormalise]) -> int:

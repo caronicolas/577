@@ -79,9 +79,8 @@ def _as_list(value: object) -> list:
 
 def _find_mandat_an(mandats: list[dict]) -> dict | None:
     for m in mandats:
-        if (
-            m.get("typeOrgane") == "ASSEMBLEE"
-            and str(m.get("legislature", "")) == str(LEGISLATURE)
+        if m.get("typeOrgane") == "ASSEMBLEE" and str(m.get("legislature", "")) == str(
+            LEGISLATURE
         ):
             return m
     return None
@@ -129,7 +128,9 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
         if mandat_an:
             lieu = mandat_an.get("election", {}).get("lieu", {})
             num_dept = lieu.get("numDepartement")
-            nom_circo = lieu.get("departement")   # pas de nomCirconscription dans le JSON
+            nom_circo = lieu.get(
+                "departement"
+            )  # pas de nomCirconscription dans le JSON
             try:
                 num_circo = int(lieu["numCirco"])  # champ réel : numCirco
             except (KeyError, ValueError, TypeError):
@@ -175,7 +176,9 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
             groupe_id=groupe_id,
         )
     except Exception:
-        logger.warning("Normalisation échouée pour acteur %s", acteur.get("uid"), exc_info=True)
+        logger.warning(
+            "Normalisation échouée pour acteur %s", acteur.get("uid"), exc_info=True
+        )
         return None
 
 
@@ -242,7 +245,8 @@ async def fetch_all_deputes() -> list[DeputeNormalise]:
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT = text("""
+_UPSERT = text(
+    """
     INSERT INTO deputes (
         id, nom, prenom, nom_de_famille, sexe, date_naissance, profession,
         num_departement, nom_circonscription, num_circonscription,
@@ -275,7 +279,8 @@ _UPSERT = text("""
         legislature         = EXCLUDED.legislature,
         groupe_id           = COALESCE(EXCLUDED.groupe_id, deputes.groupe_id),
         updated_at          = now()
-""")
+"""
+)
 
 
 async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:

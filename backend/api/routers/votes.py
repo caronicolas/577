@@ -69,7 +69,9 @@ class ScrutinDetail(BaseModel):
 @router.get("", response_model=ScrutinListResponse)
 async def list_scrutins(
     q: Optional[str] = Query(None, description="Recherche dans le titre"),
-    depute_id: Optional[str] = Query(None, description="Filtrer par député (retourne sa position)"),
+    depute_id: Optional[str] = Query(
+        None, description="Filtrer par député (retourne sa position)"
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
@@ -123,10 +125,14 @@ async def list_scrutins(
     ).scalar_one()
 
     scrutins = (
-        await session.execute(
-            base_q.order_by(Scrutin.date_seance.desc()).limit(limit).offset(offset)
+        (
+            await session.execute(
+                base_q.order_by(Scrutin.date_seance.desc()).limit(limit).offset(offset)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     return ScrutinListResponse(
         total=total,

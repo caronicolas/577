@@ -89,7 +89,9 @@ class VoteDepute(Base):
 
     scrutin_id: Mapped[str] = mapped_column(ForeignKey("scrutins.id"), primary_key=True)
     depute_id: Mapped[str] = mapped_column(ForeignKey("deputes.id"), primary_key=True)
-    position: Mapped[str] = mapped_column(String(20))  # pour / contre / abstention / nonVotant
+    position: Mapped[str] = mapped_column(
+        String(20)
+    )  # pour / contre / abstention / nonVotant
 
     scrutin: Mapped["Scrutin"] = relationship(back_populates="votes")
     depute: Mapped["Depute"] = relationship(back_populates="votes")
