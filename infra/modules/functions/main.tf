@@ -7,6 +7,18 @@ terraform {
   }
 }
 
+# Bucket Object Storage pour stocker les ZIPs des fonctions
+resource "scaleway_object_bucket" "functions_zips" {
+  name       = "an577-functions-zips"
+  project_id = var.project_id
+  region     = "fr-par"
+
+  tags = {
+    project = "an577"
+    env     = "production"
+  }
+}
+
 resource "scaleway_function_namespace" "main" {
   name       = "an577-ingestion"
   project_id = var.project_id
@@ -23,6 +35,12 @@ resource "scaleway_function" "ingest_scrutins" {
   max_scale    = 1
   memory_limit = 256
 
+  s3_zip {
+    bucket = scaleway_object_bucket.functions_zips.name
+    key    = var.scrutins_zip_key
+    region = "fr-par"
+  }
+
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
   }
@@ -34,7 +52,7 @@ resource "scaleway_function" "ingest_scrutins" {
 
 resource "scaleway_function_cron" "scrutins_daily" {
   function_id = scaleway_function.ingest_scrutins.id
-  schedule    = "0 6 * * *"  # 06:00 UTC chaque jour
+  schedule    = "0 6 * * *" # 06:00 UTC chaque jour
   args        = jsonencode({ type = "scrutins" })
 }
 
@@ -48,6 +66,12 @@ resource "scaleway_function" "ingest_deputes" {
   max_scale    = 1
   memory_limit = 256
 
+  s3_zip {
+    bucket = scaleway_object_bucket.functions_zips.name
+    key    = var.deputes_zip_key
+    region = "fr-par"
+  }
+
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
     GOUV_API_BASE_URL      = var.gouv_api_base_url
@@ -60,6 +84,6 @@ resource "scaleway_function" "ingest_deputes" {
 
 resource "scaleway_function_cron" "deputes_weekly" {
   function_id = scaleway_function.ingest_deputes.id
-  schedule    = "0 5 * * 1"  # Lundi 05:00 UTC
+  schedule    = "0 5 * * 1" # Lundi 05:00 UTC
   args        = jsonencode({ type = "deputes" })
 }
