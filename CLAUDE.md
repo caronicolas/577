@@ -293,6 +293,7 @@ SCW_DEFAULT_REGION=fr-par
 - **asyncpg + paramètre NULL** : asyncpg ne peut pas inférer le type d'un paramètre utilisé dans `CASE WHEN $n IS NULL` ou dans un `EXISTS` subquery avec le même `$n` qu'une colonne `VARCHAR` → `AmbiguousParameterError`. Solution : filtrer les valeurs nullables en Python avant l'insert et garder le SQL simple (pas de logique conditionnelle sur les paramètres). Ne jamais écrire `CASE WHEN :x IS NULL THEN NULL WHEN EXISTS(...id = :x)` avec SQLAlchemy text().
 - **Svelte 5 CSS** : pas de css() helper ni de CSS-in-JS. Tout le CSS dans des blocs <style> standard. Styles dynamiques via attribut style= ou classes conditionnelles.
 - **asyncpg + pytest-asyncio** : utiliser `NullPool` sur le moteur de test (`create_async_engine(..., poolclass=NullPool)`) pour éviter les conflits d'event loop entre fixtures. Garder `setup_db` en `scope="function"` (crée/détruit le schéma par test) et `asyncio_default_fixture_loop_scope = "function"` dans `pyproject.toml`. Ne jamais mixer `scope="session"` et `scope="function"` sur des fixtures async qui partagent le même engine asyncpg. Base de test locale : `les577_test`.
+- **Scaleway Serverless Functions** : pas de bloc s3_zip. Déploiement via zip_file local uniquement. Les dépendances Python doivent être dans le même ZIP que le code. Script de build : backend/ingestion/build_functions.sh
 
 ## Workflow recommandé avec Claude Code
 

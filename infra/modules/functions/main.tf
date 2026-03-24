@@ -22,8 +22,8 @@ resource "scaleway_function" "ingest_scrutins" {
   timeout      = 300
   max_scale    = 1
   memory_limit = 256
-  zip_file     = "../functions/scrutins.zip"
-  zip_hash     = filesha256("../functions/scrutins.zip")
+  zip_file     = "functions/scrutins.zip"
+  zip_hash     = filesha256("functions/scrutins.zip")
   deploy       = true
 
   environment_variables = {
@@ -50,8 +50,8 @@ resource "scaleway_function" "ingest_deputes" {
   timeout      = 300
   max_scale    = 1
   memory_limit = 256
-  zip_file     = "../functions/deputes.zip"
-  zip_hash     = filesha256("../functions/deputes.zip")
+  zip_file     = "functions/deputes.zip"
+  zip_hash     = filesha256("functions/deputes.zip")
   deploy       = true
 
   environment_variables = {

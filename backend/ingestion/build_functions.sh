@@ -30,7 +30,7 @@ build_zip() {
   find "$workdir/ingestion" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
   # Dépendances pip installées à plat dans le ZIP
-  pip install $DEPS --target "$workdir" --quiet --disable-pip-version-check
+  pip3 install $DEPS --target "$workdir" --quiet --disable-pip-version-check
 
   # Suppression des fichiers inutiles pour alléger le ZIP
   find "$workdir" -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
