@@ -5,7 +5,7 @@ output "api_url" {
 
 output "frontend_url" {
   description = "Endpoint du frontend (Scaleway Object Storage)"
-  value       = "https://an577-frontend.s3-website.fr-par.scw.cloud"
+  value       = module.frontend.website_url
 }
 
 output "db_endpoint" {

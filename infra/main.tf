@@ -49,3 +49,8 @@ module "functions" {
   assemblee_api_base_url = var.assemblee_api_base_url
   gouv_api_base_url      = var.gouv_api_base_url
 }
+
+module "frontend" {
+  source     = "./modules/frontend"
+  project_id = var.scw_project_id
+}
