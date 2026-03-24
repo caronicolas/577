@@ -1,19 +1,22 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from api.main import app
 from db.models import Base
 from db.session import get_session
 
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/an577_test"
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/les577_test"
 
-engine_test = create_async_engine(TEST_DATABASE_URL, echo=False)
+# NullPool : pas de pool persistant, évite les conflits d'event loop avec asyncpg
+engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 AsyncTestSession = async_sessionmaker(engine_test, expire_on_commit=False)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(autouse=True)
 async def setup_db():
+    """Crée le schéma avant chaque test et le détruit après."""
     async with engine_test.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
