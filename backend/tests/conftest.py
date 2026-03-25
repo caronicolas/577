@@ -1,4 +1,8 @@
+import os
+
 import pytest
+from alembic import command
+from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -7,18 +11,26 @@ from api.main import app
 from db.models import Base
 from db.session import get_session
 
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/les577_test"
+TEST_DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/les577_test",
+)
 
 # NullPool : pas de pool persistant, évite les conflits d'event loop avec asyncpg
 engine_test = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 AsyncTestSession = async_sessionmaker(engine_test, expire_on_commit=False)
 
 
+def _run_alembic_upgrade(url: str) -> None:
+    cfg = Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
+    command.upgrade(cfg, "head")
+
+
 @pytest.fixture(autouse=True)
 async def setup_db():
-    """Crée le schéma avant chaque test et le détruit après."""
-    async with engine_test.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Applique les migrations Alembic avant chaque test et détruit le schéma après."""
+    _run_alembic_upgrade(TEST_DATABASE_URL)
     yield
     async with engine_test.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

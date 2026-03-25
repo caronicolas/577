@@ -25,3 +25,10 @@ resource "scaleway_rdb_database" "main" {
   instance_id = scaleway_rdb_instance.main.id
   name        = var.db_name
 }
+
+resource "scaleway_rdb_privilege" "main" {
+  instance_id   = scaleway_rdb_instance.main.id
+  user_name     = var.db_user
+  database_name = var.db_name
+  permission    = "all"
+}

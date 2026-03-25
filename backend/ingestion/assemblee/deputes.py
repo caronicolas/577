@@ -9,13 +9,13 @@ import json
 import logging
 import os
 import zipfile
+from dataclasses import dataclass
 from datetime import date
 from typing import Optional
+from urllib.parse import unquote
 
 import httpx
-from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+import psycopg
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -29,11 +29,12 @@ LEGISLATURE = 17
 
 
 # ---------------------------------------------------------------------------
-# Modèles Pydantic
+# Modèles
 # ---------------------------------------------------------------------------
 
 
-class DeputeNormalise(BaseModel):
+@dataclass
+class DeputeNormalise:
     id: str
     nom: str
     prenom: str
@@ -106,7 +107,6 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
         prenom = ident.get("prenom", "")
         nom_de_famille = ident.get("nom", "")
         nom = f"{prenom} {nom_de_famille}".strip()
-        # sexe absent du JSON — déduit de la civilité
         civ = ident.get("civ", "")
         sexe = "F" if civ.startswith("Mme") else ("M" if civ.startswith("M") else None)
 
@@ -127,11 +127,9 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
         if mandat_an:
             lieu = mandat_an.get("election", {}).get("lieu", {})
             num_dept = lieu.get("numDepartement")
-            nom_circo = lieu.get(
-                "departement"
-            )  # pas de nomCirconscription dans le JSON
+            nom_circo = lieu.get("departement")
             try:
-                num_circo = int(lieu["numCirco"])  # champ réel : numCirco
+                num_circo = int(lieu["numCirco"])
             except (KeyError, ValueError, TypeError):
                 pass
 
@@ -139,7 +137,6 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
             mandat_fin = _parse_date(mandat_an.get("dateFin"))
 
             try:
-                # placeHemicycle est dans mandature, pas à la racine du mandat
                 place_hemicycle = int(mandat_an["mandature"]["placeHemicycle"])
             except (KeyError, ValueError, TypeError):
                 pass
@@ -203,8 +200,7 @@ async def _download_zip(client: httpx.AsyncClient) -> bytes:
 def _parse_zip(content: bytes) -> list[DeputeNormalise]:
     """
     Décompresse le ZIP en mémoire et parse chaque fichier JSON.
-    Structure attendue dans le ZIP : un fichier JSON par député,
-    avec {"acteur": {...}} comme clé racine.
+    Structure attendue : un fichier JSON par député, {"acteur": {...}}.
     """
     deputes: list[DeputeNormalise] = []
     errors = 0
@@ -216,7 +212,6 @@ def _parse_zip(content: bytes) -> list[DeputeNormalise]:
         for name in json_files:
             try:
                 data = json.loads(zf.read(name))
-                # Chaque fichier a {"acteur": {...}} comme racine
                 acteur = data.get("acteur", data)
                 d = _normalise_acteur(acteur)
                 if d:
@@ -241,23 +236,72 @@ async def fetch_all_deputes() -> list[DeputeNormalise]:
 
 
 # ---------------------------------------------------------------------------
+# Connexion DB
+# ---------------------------------------------------------------------------
+
+
+def _get_conn_params() -> dict:
+    """Parse DATABASE_URL → kwargs pour psycopg.AsyncConnection.connect().
+
+    Parsing manuel avec rfind('@') pour gérer les mots de passe contenant
+    des caractères spéciaux ('@', '$', etc.) sans dépendre de urlparse.
+    """
+    url = os.environ["DATABASE_URL"]
+    # Strip driver prefix : postgresql+asyncpg:// → postgresql://
+    url = url.split("://", 1)[1]  # retire le schème complet
+
+    # Sépare user:pass de host:port/db en cherchant le DERNIER @
+    at = url.rfind("@")
+    userinfo = url[:at]
+    hostinfo = url[at + 1 :]
+
+    # user:pass
+    if ":" in userinfo:
+        user, password = userinfo.split(":", 1)
+    else:
+        user, password = userinfo, ""
+
+    # host:port/dbname
+    slash = hostinfo.find("/")
+    if slash >= 0:
+        hostport, dbname = hostinfo[:slash], hostinfo[slash + 1 :]
+    else:
+        hostport, dbname = hostinfo, ""
+
+    # host:port
+    if ":" in hostport:
+        colon = hostport.rfind(":")
+        host, port = hostport[:colon], int(hostport[colon + 1 :])
+    else:
+        host, port = hostport, 5432
+
+    return {
+        "host": host,
+        "port": port,
+        "dbname": dbname,
+        "user": unquote(user),
+        "password": unquote(password),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT = text(
-    """
+_UPSERT = """
     INSERT INTO deputes (
         id, nom, prenom, nom_de_famille, sexe, date_naissance, profession,
         num_departement, nom_circonscription, num_circonscription,
         place_hemicycle, url_photo, url_an, mandat_debut, mandat_fin,
         legislature, groupe_id, updated_at
     ) VALUES (
-        :id, :nom, :prenom, :nom_de_famille, :sexe, :date_naissance, :profession,
-        :num_departement, :nom_circonscription, :num_circonscription,
-        :place_hemicycle, :url_photo, :url_an, :mandat_debut, :mandat_fin,
-        :legislature,
-        CASE WHEN EXISTS (SELECT 1 FROM organes WHERE id = :groupe_id)
-             THEN :groupe_id ELSE NULL END,
+        %(id)s, %(nom)s, %(prenom)s, %(nom_de_famille)s, %(sexe)s,
+        %(date_naissance)s, %(profession)s, %(num_departement)s,
+        %(nom_circonscription)s, %(num_circonscription)s, %(place_hemicycle)s,
+        %(url_photo)s, %(url_an)s, %(mandat_debut)s, %(mandat_fin)s,
+        %(legislature)s,
+        CASE WHEN EXISTS (SELECT 1 FROM organes WHERE id = %(groupe_id)s)
+             THEN %(groupe_id)s ELSE NULL END,
         now()
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -279,19 +323,34 @@ _UPSERT = text(
         groupe_id           = COALESCE(EXCLUDED.groupe_id, deputes.groupe_id),
         updated_at          = now()
 """
-)
 
 
 async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:
-    engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
-
-    async with Session() as session:
-        async with session.begin():
-            for depute in deputes:
-                await session.execute(_UPSERT, depute.model_dump())
-
-    await engine.dispose()
+    async with await psycopg.AsyncConnection.connect(**_get_conn_params()) as conn:
+        for d in deputes:
+            await conn.execute(
+                _UPSERT,
+                {
+                    "id": d.id,
+                    "nom": d.nom,
+                    "prenom": d.prenom,
+                    "nom_de_famille": d.nom_de_famille,
+                    "sexe": d.sexe,
+                    "date_naissance": d.date_naissance,
+                    "profession": d.profession,
+                    "num_departement": d.num_departement,
+                    "nom_circonscription": d.nom_circonscription,
+                    "num_circonscription": d.num_circonscription,
+                    "place_hemicycle": d.place_hemicycle,
+                    "url_photo": d.url_photo,
+                    "url_an": d.url_an,
+                    "mandat_debut": d.mandat_debut,
+                    "mandat_fin": d.mandat_fin,
+                    "legislature": d.legislature,
+                    "groupe_id": d.groupe_id,
+                },
+            )
+        await conn.commit()
     return len(deputes)
 
 

@@ -18,11 +18,10 @@ import zipfile
 from dataclasses import dataclass
 from datetime import date
 from typing import Optional
+from urllib.parse import unquote
 
 import httpx
-from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import psycopg
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -35,11 +34,12 @@ LEGISLATURE = 17
 
 
 # ---------------------------------------------------------------------------
-# Modèles Pydantic
+# Modèles
 # ---------------------------------------------------------------------------
 
 
-class ScrutinNormalise(BaseModel):
+@dataclass
+class ScrutinNormalise:
     id: str
     numero: int
     titre: str
@@ -99,17 +99,14 @@ def _extract_votes(scrutin_id: str, ventilation: dict) -> list[VoteDepute]:
             ("abstention", "abstentions"),
             ("nonVotant", "nonVotants"),
         ):
-            votants = _as_list(
-                (decompte.get(cle) or {}).get("votant")
-                if isinstance(decompte.get(cle), dict)
-                else decompte.get(cle)
-            )
-            for v in votants:
-                if isinstance(v, dict) and v.get("acteurRef"):
+            votants = _as_list((decompte.get(cle) or {}).get("votant"))
+            for votant in votants:
+                depute_ref = votant.get("acteurRef", "")
+                if depute_ref:
                     votes.append(
                         VoteDepute(
                             scrutin_id=scrutin_id,
-                            depute_id=v["acteurRef"],
+                            depute_id=depute_ref,
                             position=position,
                         )
                     )
@@ -119,30 +116,36 @@ def _extract_votes(scrutin_id: str, ventilation: dict) -> list[VoteDepute]:
 
 def _normalise_scrutin(
     scrutin: dict,
-) -> tuple[ScrutinNormalise, list[VoteDepute]] | None:
+) -> Optional[tuple["ScrutinNormalise", list[VoteDepute]]]:
     try:
-        uid = scrutin.get("uid")
+        uid = scrutin.get("uid", "")
         if not uid:
             return None
-
-        numero = _int(scrutin.get("numero"))
-        if numero is None:
-            return None
-
-        date_scrutin_raw = scrutin.get("dateScrutin")
-        try:
-            date_seance = date.fromisoformat(date_scrutin_raw)
-        except (TypeError, ValueError):
-            return None
-
-        titre = scrutin.get("titre") or ""
-        type_vote = scrutin.get("typeVote", {}).get("libelleTypeVote")
-        sort = (scrutin.get("sort") or {}).get("code")
 
         synthese = scrutin.get("syntheseVote", {})
         decompte = synthese.get("decompte", {})
 
-        url_an = f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/votes/{uid}"
+        numero_raw = scrutin.get("numero", "")
+        try:
+            numero = int(numero_raw)
+        except (TypeError, ValueError):
+            return None
+
+        titre = scrutin.get("titre", "").strip() or f"Scrutin n°{numero}"
+
+        date_seance_raw = scrutin.get("dateScrutin", "")
+        try:
+            date_seance = date.fromisoformat(str(date_seance_raw)[:10])
+        except (ValueError, TypeError):
+            return None
+
+        type_vote = scrutin.get("typeVote", {}).get("libelleTypeVote")
+        sort = scrutin.get("sort", {}).get("code")
+
+        url_an = (
+            f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}"
+            f"/votes/{LEGISLATURE}_{uid}"
+        )
 
         s = ScrutinNormalise(
             id=uid,
@@ -163,7 +166,9 @@ def _normalise_scrutin(
 
     except Exception:
         logger.warning(
-            "Normalisation échouée pour scrutin %s", scrutin.get("uid"), exc_info=True
+            "Normalisation échouée pour scrutin %s",
+            scrutin.get("uid"),
+            exc_info=True,
         )
         return None
 
@@ -231,108 +236,138 @@ async def fetch_all_scrutins() -> tuple[list[ScrutinNormalise], list[VoteDepute]
 
 
 # ---------------------------------------------------------------------------
+# Connexion DB
+# ---------------------------------------------------------------------------
+
+
+def _get_conn_params() -> dict:
+    """Parse DATABASE_URL → kwargs pour psycopg.AsyncConnection.connect().
+
+    Parsing manuel avec rfind('@') pour gérer les mots de passe contenant
+    des caractères spéciaux ('@', '$', etc.) sans dépendre de urlparse.
+    """
+    url = os.environ["DATABASE_URL"]
+    # Strip driver prefix : postgresql+asyncpg:// → postgresql://
+    url = url.split("://", 1)[1]  # retire le schème complet
+
+    # Sépare user:pass de host:port/db en cherchant le DERNIER @
+    at = url.rfind("@")
+    userinfo = url[:at]
+    hostinfo = url[at + 1 :]
+
+    # user:pass
+    if ":" in userinfo:
+        user, password = userinfo.split(":", 1)
+    else:
+        user, password = userinfo, ""
+
+    # host:port/dbname
+    slash = hostinfo.find("/")
+    if slash >= 0:
+        hostport, dbname = hostinfo[:slash], hostinfo[slash + 1 :]
+    else:
+        hostport, dbname = hostinfo, ""
+
+    # host:port
+    if ":" in hostport:
+        colon = hostport.rfind(":")
+        host, port = hostport[:colon], int(hostport[colon + 1 :])
+    else:
+        host, port = hostport, 5432
+
+    return {
+        "host": host,
+        "port": port,
+        "dbname": dbname,
+        "user": unquote(user),
+        "password": unquote(password),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT_SCRUTIN = text(
-    """
+_UPSERT_SCRUTIN = """
     INSERT INTO scrutins (
         id, numero, titre, date_seance, type_vote, sort,
         nombre_votants, nombre_pours, nombre_contres, nombre_abstentions,
         url_an, legislature, updated_at
     ) VALUES (
-        :id, :numero, :titre, :date_seance, :type_vote, :sort,
-        :nombre_votants, :nombre_pours, :nombre_contres, :nombre_abstentions,
-        :url_an, :legislature, now()
+        %(id)s, %(numero)s, %(titre)s, %(date_seance)s, %(type_vote)s, %(sort)s,
+        %(nombre_votants)s, %(nombre_pours)s, %(nombre_contres)s,
+        %(nombre_abstentions)s, %(url_an)s, %(legislature)s, now()
     )
     ON CONFLICT (id) DO UPDATE SET
-        titre             = EXCLUDED.titre,
-        type_vote         = EXCLUDED.type_vote,
-        sort              = EXCLUDED.sort,
-        nombre_votants    = EXCLUDED.nombre_votants,
-        nombre_pours      = EXCLUDED.nombre_pours,
-        nombre_contres    = EXCLUDED.nombre_contres,
+        titre              = EXCLUDED.titre,
+        type_vote          = EXCLUDED.type_vote,
+        sort               = EXCLUDED.sort,
+        nombre_votants     = EXCLUDED.nombre_votants,
+        nombre_pours       = EXCLUDED.nombre_pours,
+        nombre_contres     = EXCLUDED.nombre_contres,
         nombre_abstentions = EXCLUDED.nombre_abstentions,
-        url_an            = EXCLUDED.url_an,
-        updated_at        = now()
+        url_an             = EXCLUDED.url_an,
+        updated_at         = now()
 """
-)
-
-_FETCH_DEPUTE_IDS = text("SELECT id FROM deputes")
-
-_DELETE_VOTES_BATCH = text("DELETE FROM votes_deputes WHERE scrutin_id = ANY(:ids)")
-
-_INSERT_VOTES_BULK = text(
-    """
-    INSERT INTO votes_deputes (scrutin_id, depute_id, position)
-    VALUES (:scrutin_id, :depute_id, :position)
-    ON CONFLICT (scrutin_id, depute_id) DO UPDATE SET position = EXCLUDED.position
-"""
-)
-
-
-async def _load_depute_ids(session: AsyncSession) -> set[str]:
-    result = await session.execute(_FETCH_DEPUTE_IDS)
-    return {row[0] for row in result}
-
-
-async def upsert_scrutins(
-    session: AsyncSession,
-    scrutins: list[ScrutinNormalise],
-) -> None:
-    for s in scrutins:
-        await session.execute(_UPSERT_SCRUTIN, s.model_dump())
 
 
 async def persist_all(
     scrutins: list[ScrutinNormalise],
     votes_par_scrutin: dict[str, list[VoteDepute]],
 ) -> int:
-    engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
+    conn_params = _get_conn_params()
 
-    # 1. Scrutins en un seul commit
-    async with Session() as session:
-        async with session.begin():
-            await upsert_scrutins(session, scrutins)
+    async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
+        # 1. Upsert scrutins
+        for s in scrutins:
+            await conn.execute(
+                _UPSERT_SCRUTIN,
+                {
+                    "id": s.id,
+                    "numero": s.numero,
+                    "titre": s.titre,
+                    "date_seance": s.date_seance,
+                    "type_vote": s.type_vote,
+                    "sort": s.sort,
+                    "nombre_votants": s.nombre_votants,
+                    "nombre_pours": s.nombre_pours,
+                    "nombre_contres": s.nombre_contres,
+                    "nombre_abstentions": s.nombre_abstentions,
+                    "url_an": s.url_an,
+                    "legislature": s.legislature,
+                },
+            )
+        await conn.commit()
+        logger.info("%d scrutins upsertés", len(scrutins))
 
-    # 2. Charger les IDs députés connus pour filtrer en Python (évite les FK errors)
-    async with Session() as session:
-        depute_ids = await _load_depute_ids(session)
-    logger.info("%d députés connus en base pour filtrage des votes", len(depute_ids))
-
-    # 3. Votes par lot de 200 scrutins — bulk insert via executemany
-    scrutin_ids = list(votes_par_scrutin.keys())
-    batch_size = 200
-    total_votes = 0
-
-    for i in range(0, len(scrutin_ids), batch_size):
-        batch = scrutin_ids[i : i + batch_size]
-        rows = [
-            {
-                "scrutin_id": v.scrutin_id,
-                "depute_id": v.depute_id,
-                "position": v.position,
-            }
-            for sid in batch
-            for v in votes_par_scrutin[sid]
-            if v.depute_id in depute_ids
-        ]
-        async with Session() as session:
-            async with session.begin():
-                # Supprime les votes existants pour ce batch
-                await session.execute(_DELETE_VOTES_BATCH, {"ids": batch})
-                if rows:
-                    await session.execute(_INSERT_VOTES_BULK, rows)
-        total_votes += len(rows)
+        # 2. Charger les IDs députés connus pour filtrer (évite les FK errors)
+        cur = await conn.execute("SELECT id FROM deputes")
+        depute_ids = {row[0] for row in await cur.fetchall()}
         logger.info(
-            "Votes : %d/%d scrutins — %d votes insérés",
-            min(i + batch_size, len(scrutin_ids)),
-            len(scrutin_ids),
-            total_votes,
+            "%d députés connus en base pour filtrage des votes", len(depute_ids)
         )
 
-    await engine.dispose()
+        # 3. Votes : DELETE + COPY (beaucoup plus rapide qu'executemany)
+        all_scrutin_ids = list(votes_par_scrutin.keys())
+        await conn.execute(
+            "DELETE FROM votes_deputes WHERE scrutin_id = ANY(%(ids)s)",
+            {"ids": all_scrutin_ids},
+        )
+        # Prépare le buffer COPY en mémoire (1 seul write I/O)
+        lines = []
+        for sid in all_scrutin_ids:
+            for v in votes_par_scrutin[sid]:
+                if v.depute_id in depute_ids:
+                    lines.append(f"{v.scrutin_id}\t{v.depute_id}\t{v.position}\n")
+        total_votes = len(lines)
+        cur = conn.cursor()
+        async with cur.copy(
+            "COPY votes_deputes (scrutin_id, depute_id, position) FROM STDIN"
+        ) as copy:
+            await copy.write("".join(lines).encode())
+        await conn.commit()
+        logger.info("%d votes nominatifs insérés via COPY", total_votes)
+
     return len(scrutins)
 
 
@@ -346,7 +381,6 @@ async def _main() -> dict:
 
     scrutins, votes = await fetch_all_scrutins()
 
-    # Regroupe les votes par scrutin_id
     votes_par_scrutin: dict[str, list[VoteDepute]] = {}
     for v in votes:
         votes_par_scrutin.setdefault(v.scrutin_id, []).append(v)

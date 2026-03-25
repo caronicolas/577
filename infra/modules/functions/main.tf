@@ -19,9 +19,9 @@ resource "scaleway_function" "ingest_scrutins" {
   runtime      = "python312"
   handler      = "scrutins.handle"
   privacy      = "private"
-  timeout      = 300
+  timeout      = 900
   max_scale    = 1
-  memory_limit = 256
+  memory_limit = 1024
   zip_file     = "functions/scrutins.zip"
   zip_hash     = filesha256("functions/scrutins.zip")
   deploy       = true

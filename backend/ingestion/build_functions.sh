@@ -13,7 +13,7 @@ INGESTION_DIR="$REPO_ROOT/backend/ingestion/assemblee"
 OUT_DIR="$REPO_ROOT/infra/functions"
 TMP_DIR="$(mktemp -d)"
 
-DEPS="sqlalchemy asyncpg pydantic httpx tenacity"
+DEPS="psycopg httpx tenacity"
 
 mkdir -p "$OUT_DIR"
 
