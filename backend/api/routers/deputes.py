@@ -257,9 +257,10 @@ async def get_activites(
     session: AsyncSession = Depends(get_session),
 ) -> list[Activite]:
     """
-    Retourne l'activité journalière du député sur la 17e législature (depuis 2024-06-18).
-    Agrège votes (VoteDepute + Scrutin) et amendements (Amendement).
-    Seules les dates avec au moins un événement sont retournées.
+    Retourne l'activité journalière du député sur la 17e législature
+    (depuis 2024-06-18). Agrège votes (VoteDepute + Scrutin) et
+    amendements (Amendement). Seules les dates avec au moins un
+    événement sont retournées.
     """
     depute_exists = (
         await session.execute(select(Depute.id).where(Depute.id == depute_id))
@@ -293,7 +294,7 @@ async def get_activites(
 
     # -- Agrégation par date -----------------------------------------------------
     # Chaque entrée : {a_vote, present, a_depose_amendement}
-    # position "nonVotant" = présent en séance mais n'a pas voté (ex : délégation de vote)
+    # position "nonVotant" = présent en séance mais n'a pas voté
     # position "pour"/"contre"/"abstention" = a effectivement voté
     POSITIONS_VOTEES = {"pour", "contre", "abstention"}
 

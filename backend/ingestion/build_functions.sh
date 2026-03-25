@@ -13,7 +13,7 @@ INGESTION_DIR="$REPO_ROOT/backend/ingestion/assemblee"
 OUT_DIR="$REPO_ROOT/infra/functions"
 TMP_DIR="$(mktemp -d)"
 
-DEPS="sqlalchemy asyncpg pydantic httpx"
+DEPS="sqlalchemy asyncpg pydantic httpx tenacity"
 
 mkdir -p "$OUT_DIR"
 
@@ -22,6 +22,7 @@ build_zip() {
   local workdir="$TMP_DIR/$name"
 
   echo "==> Building $name.zip"
+  rm -f "$OUT_DIR/$name.zip"
   mkdir -p "$workdir"
 
   # Code source de la fonction

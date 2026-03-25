@@ -5,7 +5,8 @@ Handler Scaleway : handle(event, context)
 Structure du ZIP :
   json/VTANR5L17Vxxxx.json  — un fichier par scrutin
   Racine : {"scrutin": {...}}
-  Votes nominatifs dans scrutin.ventilationVotes.organe.groupes.groupe[].vote.decompteNominatif
+  Votes nominatifs dans scrutin.ventilationVotes.organe.groupes
+  .groupe[].vote.decompteNominatif
 """
 
 import asyncio
@@ -30,7 +31,6 @@ ZIP_URL = (
     "https://data.assemblee-nationale.fr/static/openData/repository"
     "/17/loi/scrutins/Scrutins.json.zip"
 )
-DATABASE_URL = os.environ["DATABASE_URL"]
 LEGISLATURE = 17
 
 
@@ -288,7 +288,7 @@ async def persist_all(
     scrutins: list[ScrutinNormalise],
     votes_par_scrutin: dict[str, list[VoteDepute]],
 ) -> int:
-    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
     Session = async_sessionmaker(engine, expire_on_commit=False)
 
     # 1. Scrutins en un seul commit

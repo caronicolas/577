@@ -25,7 +25,6 @@ ZIP_URL = (
     "/17/amo/deputes_actifs_mandats_actifs_organes"
     "/AMO10_deputes_actifs_mandats_actifs_organes.json.zip"
 )
-DATABASE_URL = os.environ["DATABASE_URL"]
 LEGISLATURE = 17
 
 
@@ -284,7 +283,7 @@ _UPSERT = text(
 
 
 async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:
-    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
     Session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with Session() as session:
