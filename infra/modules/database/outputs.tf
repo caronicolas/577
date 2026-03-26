@@ -25,7 +25,7 @@ output "connection_url" {
     format(
       "postgresql+asyncpg://%s:%s@%s:%s/%s",
       var.db_user,
-      var.db_password,
+      replace(replace(replace(var.db_password, "@", "%40"), "#", "%23"), ":", "%3A"),
       scaleway_rdb_instance.main.load_balancer[0].ip,
       scaleway_rdb_instance.main.load_balancer[0].port,
       var.db_name
