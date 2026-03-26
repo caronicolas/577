@@ -15,7 +15,7 @@ terraform {
     endpoint                    = "https://s3.fr-par.scw.cloud"
     skip_credentials_validation = true
     skip_region_validation      = true
-    skip_requesting_account_id = true
+    skip_requesting_account_id  = true
   }
 }
 
@@ -28,10 +28,10 @@ provider "scaleway" {
 }
 
 module "database" {
-  source     = "./modules/database"
-  project_id = var.scw_project_id
-  db_name    = var.db_name
-  db_user    = var.db_user
+  source      = "./modules/database"
+  project_id  = var.scw_project_id
+  db_name     = var.db_name
+  db_user     = var.db_user
   db_password = var.db_password
 }
 
@@ -43,9 +43,9 @@ module "containers" {
 }
 
 module "functions" {
-  source       = "./modules/functions"
-  project_id   = var.scw_project_id
-  database_url = module.database.connection_url
+  source                 = "./modules/functions"
+  project_id             = var.scw_project_id
+  database_url           = module.database.connection_url
   assemblee_api_base_url = var.assemblee_api_base_url
   gouv_api_base_url      = var.gouv_api_base_url
 }
