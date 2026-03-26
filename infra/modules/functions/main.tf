@@ -23,7 +23,7 @@ resource "scaleway_function" "ingest_scrutins" {
   max_scale    = 1
   memory_limit = 1024
   zip_file     = "functions/scrutins.zip"
-  zip_hash     = filesha256("functions/scrutins.zip")
+  zip_hash     = try(filesha256("functions/scrutins.zip"), "")
   deploy       = true
 
   environment_variables = {
@@ -51,7 +51,7 @@ resource "scaleway_function" "ingest_deputes" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/deputes.zip"
-  zip_hash     = filesha256("functions/deputes.zip")
+  zip_hash     = try(filesha256("functions/deputes.zip"), "")
   deploy       = true
 
   environment_variables = {
