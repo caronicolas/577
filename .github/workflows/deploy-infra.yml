@@ -41,7 +41,11 @@ jobs:
           TF_VAR_scw_secret_key: ${{ secrets.SCW_SECRET_KEY }}
           TF_VAR_scw_project_id: ${{ secrets.SCW_PROJECT_ID }}
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan -out=tfplan \
+            -target=module.database \
+            -target=module.containers \
+            -target=module.frontend
 
       - name: Upload plan
         uses: actions/upload-artifact@v4
