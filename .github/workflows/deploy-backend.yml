@@ -94,6 +94,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Build ZIPs (requis par filesha256 dans module.functions)
+        run: bash backend/ingestion/build_functions.sh
+
       - uses: hashicorp/setup-terraform@v3
 
       - name: Terraform apply
