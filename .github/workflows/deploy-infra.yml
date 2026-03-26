@@ -28,6 +28,7 @@ jobs:
 
       - name: Build ZIPs (requis par filesha256 dans module.functions)
         run: bash backend/ingestion/build_functions.sh
+        working-directory: ${{ github.workspace }}
 
       - uses: hashicorp/setup-terraform@v3
 
