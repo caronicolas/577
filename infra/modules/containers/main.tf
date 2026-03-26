@@ -23,7 +23,7 @@ resource "scaleway_registry_namespace" "main" {
 resource "scaleway_container" "api" {
   name           = "api"
   namespace_id   = scaleway_container_namespace.main.id
-  registry_image = "${scaleway_registry_namespace.main.endpoint}/api-577:${var.image_tag}"
+  registry_image = "${scaleway_registry_namespace.main.endpoint}/api:${var.image_tag}"
   port           = 8000
   cpu_limit      = 280
   memory_limit   = 512
@@ -31,7 +31,7 @@ resource "scaleway_container" "api" {
   max_scale      = 5
   timeout        = 30
   privacy        = "public"
-  deploy         = false
+  deploy         = true
 
   environment_variables = {
     API_HOST = "0.0.0.0"
@@ -40,9 +40,5 @@ resource "scaleway_container" "api" {
 
   secret_environment_variables = {
     DATABASE_URL = var.database_url
-  }
-
-  lifecycle {
-    ignore_changes = [registry_image]
   }
 }
