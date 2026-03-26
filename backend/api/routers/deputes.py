@@ -104,6 +104,9 @@ class DeputeDetail(BaseModel):
     url_photo: Optional[str]
     url_an: Optional[str]
     twitter: Optional[str]
+    facebook_url: Optional[str]
+    instagram_url: Optional[str]
+    bluesky_url: Optional[str]
     mandat_debut: Optional[date]
     mandat_fin: Optional[date]
     legislature: int
@@ -227,6 +230,9 @@ async def get_depute(
         url_photo=depute.url_photo,
         url_an=depute.url_an,
         twitter=depute.twitter,
+        facebook_url=depute.facebook_url,
+        instagram_url=depute.instagram_url,
+        bluesky_url=depute.bluesky_url,
         mandat_debut=depute.mandat_debut,
         mandat_fin=depute.mandat_fin,
         legislature=depute.legislature,
