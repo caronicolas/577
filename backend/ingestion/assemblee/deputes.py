@@ -143,7 +143,7 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
 
         numeric_id = depute_id.removeprefix("PA")
         url_photo = (
-            f"https://www.assemblee-nationale.fr/dyn/static/tribun/photos/{numeric_id}.jpg"
+            f"https://www.assemblee-nationale.fr/dyn/static/tribun/{LEGISLATURE}/photos/carre/{numeric_id}.jpg"
             if depute_id.startswith("PA")
             else None
         )

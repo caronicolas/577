@@ -6,16 +6,30 @@
   let error = $state<string | null>(null);
 
   $effect(() => {
-    fetch('/api/deputes')
-      .then((r) => r.json())
+    fetch('/api/deputes?limit=577')
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((data) => {
-        deputes = data;
+        deputes = data.items ?? [];
         loading = false;
       })
       .catch(() => {
         error = 'Impossible de charger les données.';
         loading = false;
       });
+  });
+
+  const groupes = $derived.by(() => {
+    const seen = new Map<string, { sigle: string; libelle: string; couleur: string; count: number }>();
+    for (const d of deputes) {
+      if (!d.groupe) continue;
+      const g = d.groupe;
+      if (seen.has(g.id)) {
+        seen.get(g.id)!.count++;
+      } else {
+        seen.set(g.id, { sigle: g.sigle, libelle: g.libelle, couleur: g.couleur ?? '#cbcbcb', count: 1 });
+      }
+    }
+    return [...seen.values()].sort((a, b) => b.count - a.count);
   });
 </script>
 
@@ -34,6 +48,16 @@
   <div class="error">{error}</div>
 {:else}
   <Hemicycle mode="groupe" data={deputes} />
+  <div class="legend">
+    {#each groupes as g}
+      <div class="legend-item">
+        <span class="swatch" style="background: {g.couleur}"></span>
+        <span class="sigle">{g.sigle}</span>
+        <span class="libelle">{g.libelle}</span>
+        <span class="count">({g.count})</span>
+      </div>
+    {/each}
+  </div>
 {/if}
 
 <style>
@@ -56,5 +80,42 @@
     padding: 2rem;
     text-align: center;
     color: var(--color-text-muted);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin-top: 1.5rem;
+    max-width: 900px;
+    margin-inline: auto;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .sigle {
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .libelle {
+    color: var(--color-text-muted);
+  }
+
+  .count {
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
   }
 </style>

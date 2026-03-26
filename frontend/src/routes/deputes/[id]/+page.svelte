@@ -4,6 +4,12 @@
 
   const id = $derived($page.params.id);
 
+  function texteNum(ref: string | null): string | null {
+    if (!ref) return null;
+    const m = ref.match(/B(\d+)$/);
+    return m ? `n°${parseInt(m[1], 10)}` : null;
+  }
+
   let depute = $state<any>(null);
   let amendements = $state<any[]>([]);
   let votes = $state<any[]>([]);
@@ -49,11 +55,14 @@
     {/if}
     <div class="meta">
       <h1>{depute.prenom} {depute.nom_de_famille}</h1>
-      {#if depute.groupe_sigle}
-        <span
-          class="badge"
-          style="background: {depute.groupe_couleur ?? 'var(--color-border)'}"
-        >{depute.groupe_sigle}</span>
+      {#if depute.groupe}
+        <div class="groupe">
+          <span
+            class="badge"
+            style="background: {depute.groupe.couleur ?? 'var(--color-border)'}"
+          >{depute.groupe.sigle}</span>
+          <span class="groupe-libelle">{depute.groupe.libelle}</span>
+        </div>
       {/if}
       <p class="circ">{depute.nom_circonscription ?? ''}{depute.num_departement ? ` (${depute.num_departement})` : ''}</p>
       {#if depute.profession}
@@ -109,9 +118,19 @@
       <ul class="list">
         {#each amendements as a (a.id)}
           <li class="list-item">
-            <span class="amend-num">{a.numero ?? '—'}</span>
-            <span class="amend-titre">{a.titre ?? 'Sans titre'}</span>
-            <span class="amend-sort" data-sort={a.sort}>{a.sort ?? ''}</span>
+            <a href={a.url_an} target="_blank" rel="noopener noreferrer" class="amend-link">
+              <span class="amend-num">N°{a.numero ?? '—'}</span>
+              {#if texteNum(a.texte_legislature)}
+                <span class="amend-texte">Texte {texteNum(a.texte_legislature)}</span>
+              {/if}
+              <span class="amend-titre">{a.titre ?? '—'}</span>
+              {#if a.date_depot}
+                <span class="amend-date">{a.date_depot}</span>
+              {/if}
+              {#if a.sort}
+                <span class="amend-sort" data-sort={a.sort}>{a.sort}</span>
+              {/if}
+            </a>
           </li>
         {/each}
       </ul>
@@ -153,6 +172,17 @@
     width: fit-content;
   }
 
+  .groupe {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .groupe-libelle {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
   .circ { color: var(--color-text-muted); }
   .detail { font-size: 0.875rem; color: var(--color-text-muted); }
   .twitter { font-size: 0.875rem; }
@@ -178,16 +208,46 @@
     font-size: 0.875rem;
   }
 
+  .amend-link {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    width: 100%;
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 0.875rem;
+    flex-wrap: wrap;
+  }
+
+  .amend-link:hover { text-decoration: none; background: var(--color-bg); }
+
   .amend-num {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text);
+    flex-shrink: 0;
+  }
+
+  .amend-texte {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    background: var(--color-border);
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+  }
+
+  .amend-titre { flex: 1; color: var(--color-text-muted); }
+
+  .amend-date {
     font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--color-text-muted);
     flex-shrink: 0;
-    width: 60px;
   }
 
-  .amend-titre { flex: 1; }
-
+  .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
   .amend-sort[data-sort="Adopté"] { color: var(--color-vote); }
   .amend-sort[data-sort="Rejeté"] { color: var(--color-absent); }
 

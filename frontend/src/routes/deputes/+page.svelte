@@ -11,7 +11,7 @@
     if (search) params.set('q', search);
     if (groupe) params.set('groupe', groupe);
     if (departement) params.set('departement', departement);
-    params.set('limit', '200');
+    params.set('limit', '600');
 
     loading = true;
     fetch(`/api/deputes?${params}`)
@@ -66,7 +66,7 @@
             <div class="photo placeholder"></div>
           {/if}
           <div class="info">
-            <strong>{d.prenom} {d.nom_de_famille ?? d.nom}</strong>
+            <strong>{d.nom}</strong>
             {#if d.groupe?.sigle}
               <span
                 class="badge"

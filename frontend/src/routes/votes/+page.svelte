@@ -1,13 +1,18 @@
 <script lang="ts">
+  const PAGE_SIZE = 50;
+
   let search = $state('');
   let scrutins = $state<any[]>([]);
   let total = $state(0);
   let loading = $state(true);
+  let loadingMore = $state(false);
 
   $effect(() => {
-    const params = new URLSearchParams({ limit: '100' });
-    if (search) params.set('q', search);
+    const q = search;
     loading = true;
+    scrutins = [];
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+    if (q) params.set('q', q);
     fetch(`/api/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
@@ -16,6 +21,21 @@
         loading = false;
       });
   });
+
+  function loadMore() {
+    loadingMore = true;
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      offset: String(scrutins.length),
+    });
+    if (search) params.set('q', search);
+    fetch(`/api/votes?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        scrutins = [...scrutins, ...(data.items ?? [])];
+        loadingMore = false;
+      });
+  }
 </script>
 
 <svelte:head>
@@ -35,7 +55,7 @@
 {#if loading}
   <p class="muted">Chargement…</p>
 {:else}
-  <p class="count">{total} scrutin{total > 1 ? 's' : ''}</p>
+  <p class="count">{scrutins.length} / {total} scrutin{total > 1 ? 's' : ''}</p>
   <ul class="list">
     {#each scrutins as s (s.id)}
       <li>
@@ -55,6 +75,13 @@
       </li>
     {/each}
   </ul>
+  {#if scrutins.length < total}
+    <div class="load-more">
+      <button onclick={loadMore} disabled={loadingMore} class="btn-more">
+        {loadingMore ? 'Chargement…' : `Charger plus (${total - scrutins.length} restants)`}
+      </button>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -122,6 +149,32 @@
   .stats { font-size: 0.78rem; color: var(--color-text-muted); }
   .pour { color: var(--color-vote); }
   .contre { color: var(--color-absent); }
+
+  .load-more {
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem 0;
+  }
+
+  .btn-more {
+    padding: 0.6rem 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+  }
+
+  .btn-more:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-more:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
 
   .muted { color: var(--color-text-muted); }
 </style>

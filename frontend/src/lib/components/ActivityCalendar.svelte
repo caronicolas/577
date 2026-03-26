@@ -1,10 +1,25 @@
 <script lang="ts">
+  interface VoteJour {
+    scrutin_id: string;
+    titre: string;
+    position: string; // pour / contre / abstention / nonVotant
+  }
+
+  interface AmendementJour {
+    id: string;
+    numero: string | null;
+    titre: string | null;
+    url_an: string | null;
+  }
+
   interface Activite {
     date: string; // YYYY-MM-DD
     present: boolean;
     a_vote: boolean;
     a_pris_parole: boolean;
     a_depose_amendement: boolean;
+    votes: VoteJour[];
+    amendements: AmendementJour[];
   }
 
   interface Props {
@@ -75,10 +90,78 @@
   const svgHeight = $derived(7 * STEP);
 
   const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  interface TooltipState {
+    date: string;
+    activite: Activite | null;
+    x: number;
+    y: number;
+  }
+
+  let tooltip = $state<TooltipState | null>(null);
+  let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function positionTooltip(cell: DOMRect): { x: number; y: number } {
+    const TOOLTIP_W = 340;
+    const TOOLTIP_H = 200;
+    const MARGIN = 8;
+    // Par défaut à droite, centré verticalement sur la cellule
+    let x = cell.right + MARGIN;
+    let y = cell.top + cell.height / 2 - TOOLTIP_H / 2;
+    // Bascule à gauche si ça dépasse
+    if (x + TOOLTIP_W > window.innerWidth) x = cell.left - TOOLTIP_W - MARGIN;
+    // Clampe verticalement dans le viewport
+    y = Math.max(8, Math.min(y, window.innerHeight - TOOLTIP_H - 8));
+    return { x, y };
+  }
+
+  function handleMouseEnter(e: MouseEvent, date: string) {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+    const cell = (e.currentTarget as SVGRectElement).getBoundingClientRect();
+    const { x, y } = positionTooltip(cell);
+    tooltip = { date, activite: activiteByDate.get(date) ?? null, x, y };
+  }
+
+  function handleCellLeave() {
+    hideTimer = setTimeout(() => { tooltip = null; hideTimer = null; }, 120);
+  }
+
+  function handleTooltipEnter() {
+    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  }
+
+  function handleTooltipLeave() {
+    tooltip = null;
+  }
+
+  function formatDate(iso: string): string {
+    const d = new Date(iso + 'T12:00:00');
+    const s = dateFormatter.format(d);
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  const POSITION_LABEL: Record<string, string> = {
+    pour: 'Pour',
+    contre: 'Contre',
+    abstention: 'Abstention',
+    nonVotant: 'Non votant',
+  };
 </script>
 
 <div class="calendar">
-  <svg width={svgWidth} height={svgHeight + STEP} role="img" aria-label="Calendrier d'activité">
+  <svg
+    width={svgWidth}
+    height={svgHeight + STEP}
+    role="img"
+    aria-label="Calendrier d'activité"
+  >
     <!-- Labels jours -->
     {#each DAY_LABELS as label, i}
       <text
@@ -100,22 +183,65 @@
           height={CELL}
           rx="2"
           fill={cellColor(date)}
-          role="cell"
+          role="img"
           aria-label={cellLabel(date)}
-        >
-          <title>{cellLabel(date)}</title>
-        </rect>
+          tabindex="-1"
+          onmouseenter={(e) => handleMouseEnter(e, date)}
+          onmouseleave={handleCellLeave}
+        />
       {/each}
     {/each}
   </svg>
 
   <!-- Légende -->
-  <div class="legend">
-    <span class="swatch" style="background: var(--color-absent)"></span> Absent
-    <span class="swatch" style="background: var(--color-present)"></span> Présent
-    <span class="swatch" style="background: var(--color-vote)"></span> A voté
-    <span class="swatch" style="background: var(--color-vote-actif)"></span> A voté + intervention
+</div>
+
+{#if tooltip}
+  {@const a = tooltip.activite}
+  <div
+    class="tooltip"
+    style="left: {tooltip.x}px; top: {tooltip.y}px"
+    onmouseenter={handleTooltipEnter}
+    onmouseleave={handleTooltipLeave}
+    role="tooltip"
+  >
+    <div class="tooltip-date">{formatDate(tooltip.date)}</div>
+    {#if !a}
+      <div class="tooltip-line">Aucune donnée</div>
+    {:else if !a.present}
+      <div class="tooltip-line">Absent</div>
+    {:else}
+      <div class="tooltip-line">Présent en séance</div>
+      {#if a.votes.length > 0}
+        <div class="tooltip-section">Votes</div>
+        {#each a.votes as v}
+          <a class="tooltip-line tooltip-link" href="/votes/{v.scrutin_id}">
+            <span class="position position--{v.position.toLowerCase()}">{POSITION_LABEL[v.position] ?? v.position}</span>
+            <span>{v.titre}</span>
+          </a>
+        {/each}
+      {/if}
+      {#if a.amendements.length > 0}
+        <div class="tooltip-section">Amendements déposés</div>
+        {#each a.amendements as am}
+          {#if am.url_an}
+            <a class="tooltip-line tooltip-link" href={am.url_an} target="_blank" rel="noopener noreferrer">
+              {am.numero ? `${am.numero} — ` : ''}{am.titre ?? 'Sans titre'}
+            </a>
+          {:else}
+            <div class="tooltip-line">{am.numero ? `${am.numero} — ` : ''}{am.titre ?? 'Sans titre'}</div>
+          {/if}
+        {/each}
+      {/if}
+    {/if}
   </div>
+{/if}
+
+<div class="legend">
+  <span class="swatch" style="background: var(--color-absent)"></span> Absent
+  <span class="swatch" style="background: var(--color-present)"></span> Présent
+  <span class="swatch" style="background: var(--color-vote)"></span> A voté
+  <span class="swatch" style="background: var(--color-vote-actif)"></span> A voté + intervention
 </div>
 
 <style>
@@ -145,4 +271,78 @@
     height: 10px;
     border-radius: 2px;
   }
+
+  .tooltip {
+    position: fixed;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    max-width: 340px;
+    z-index: 1000;
+  }
+
+  .tooltip-link {
+    display: flex;
+    gap: 0.4rem;
+    align-items: baseline;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 3px;
+    padding: 0.1rem 0.2rem;
+    margin: 0 -0.2rem;
+    cursor: pointer;
+  }
+
+  .tooltip-link:hover {
+    background: var(--color-border, #e2e8f0);
+    text-decoration: none;
+  }
+
+  .tooltip-date {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--color-text, #1a202c);
+    white-space: nowrap;
+  }
+
+  .tooltip-section {
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted, #718096);
+    margin-top: 0.4rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .tooltip-line {
+    color: var(--color-text-muted, #718096);
+    display: flex;
+    gap: 0.4rem;
+    align-items: baseline;
+    white-space: normal;
+    line-height: 1.4;
+    padding: 0.1rem 0;
+  }
+
+  .tooltip-line:not(.tooltip-link)::before {
+    content: '· ';
+    flex-shrink: 0;
+  }
+
+  .position {
+    font-weight: 700;
+    font-size: 0.7rem;
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .position--pour       { background: #c6f6d5; color: #276749; }
+  .position--contre     { background: #fed7d7; color: #9b2c2c; }
+  .position--abstention { background: #e2e8f0; color: #4a5568; }
+  .position--nonvotant  { background: #e2e8f0; color: #718096; }
 </style>

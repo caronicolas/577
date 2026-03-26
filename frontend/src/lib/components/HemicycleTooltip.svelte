@@ -27,11 +27,12 @@
     {/if}
     <div class="content">
       <strong class="nom">{depute.nom ?? depute.depute_id}</strong>
-      {#if mode === 'groupe' && depute.groupe_sigle}
+      {#if mode === 'groupe' && depute.groupe}
         <span
           class="badge"
-          style="background: {depute.groupe_couleur ?? 'var(--color-border)'}"
-        >{depute.groupe_sigle}</span>
+          style="background: {depute.groupe.couleur ?? 'var(--color-border)'}"
+        >{depute.groupe.sigle}</span>
+        <span class="groupe-libelle">{depute.groupe.libelle}</span>
       {/if}
       {#if mode === 'vote' && depute.position}
         <span class="position" data-pos={depute.position}>
@@ -100,6 +101,11 @@
   .position[data-pos="contre"] { color: #e53e3e; }
   .position[data-pos="abstention"] { color: #a0aec0; }
   .position[data-pos="nonVotant"] { color: #2d3748; }
+
+  .groupe-libelle {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
 
   .circ {
     font-size: 0.72rem;

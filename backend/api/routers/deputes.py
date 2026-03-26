@@ -47,12 +47,27 @@ class DeputeListResponse(BaseModel):
     items: list[DeputeListItem]
 
 
+class VoteJour(BaseModel):
+    scrutin_id: str
+    titre: str
+    position: str  # pour / contre / abstention / nonVotant
+
+
+class AmendementJour(BaseModel):
+    id: str
+    numero: Optional[str]
+    titre: Optional[str]
+    url_an: Optional[str]
+
+
 class Activite(BaseModel):
     date: date
     present: bool
     a_vote: bool
     a_pris_parole: bool
     a_depose_amendement: bool
+    votes: list[VoteJour]
+    amendements: list[AmendementJour]
 
 
 class ScrutinResume(BaseModel):
@@ -107,7 +122,7 @@ async def list_deputes(
     groupe: Optional[str] = Query(None, description="Sigle du groupe parlementaire"),
     departement: Optional[str] = Query(None, description="Numéro de département"),
     q: Optional[str] = Query(None, description="Recherche par nom"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=600),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_session),
 ) -> DeputeListResponse:
@@ -271,9 +286,9 @@ async def get_activites(
     leg_debut = date(2024, 6, 18)
     today = date.today()
 
-    # -- Votes : date + position -------------------------------------------------
+    # -- Votes : date + position + titre scrutin ---------------------------------
     votes_stmt = (
-        select(Scrutin.date_seance, VoteDepute.position)
+        select(Scrutin.date_seance, Scrutin.id, Scrutin.titre, VoteDepute.position)
         .join(VoteDepute, VoteDepute.scrutin_id == Scrutin.id)
         .where(
             VoteDepute.depute_id == depute_id,
@@ -283,19 +298,22 @@ async def get_activites(
     )
     votes_rows = (await session.execute(votes_stmt)).all()
 
-    # -- Amendements : date de dépôt ---------------------------------------------
-    amend_stmt = select(Amendement.date_depot).where(
+    # -- Amendements : date + numéro + titre + url -------------------------------
+    amend_stmt = select(
+        Amendement.id,
+        Amendement.date_depot,
+        Amendement.numero,
+        Amendement.titre,
+        Amendement.url_an,
+    ).where(
         Amendement.depute_id == depute_id,
         Amendement.date_depot >= leg_debut,
         Amendement.date_depot <= today,
         Amendement.date_depot.is_not(None),
     )
-    amend_rows = (await session.execute(amend_stmt)).scalars().all()
+    amend_rows = (await session.execute(amend_stmt)).all()
 
     # -- Agrégation par date -----------------------------------------------------
-    # Chaque entrée : {a_vote, present, a_depose_amendement}
-    # position "nonVotant" = présent en séance mais n'a pas voté
-    # position "pour"/"contre"/"abstention" = a effectivement voté
     POSITIONS_VOTEES = {"pour", "contre", "abstention"}
 
     data: dict[date, dict] = defaultdict(
@@ -303,18 +321,26 @@ async def get_activites(
             "present": False,
             "a_vote": False,
             "a_depose_amendement": False,
+            "votes": [],
+            "amendements": [],
         }
     )
 
-    for d, position in votes_rows:
+    for d, scrutin_id, titre, position in votes_rows:
         entry = data[d]
         entry["present"] = True
         if position.lower() in POSITIONS_VOTEES:
             entry["a_vote"] = True
+        entry["votes"].append(
+            VoteJour(scrutin_id=scrutin_id, titre=titre, position=position)
+        )
 
-    for d in amend_rows:
+    for amend_id, d, numero, titre, url_an in amend_rows:
         data[d]["a_depose_amendement"] = True
-        data[d]["present"] = True  # déposer un amendement implique une présence
+        data[d]["present"] = True
+        data[d]["amendements"].append(
+            AmendementJour(id=amend_id, numero=numero, titre=titre, url_an=url_an)
+        )
 
     return [
         Activite(
@@ -323,6 +349,8 @@ async def get_activites(
             a_vote=v["a_vote"],
             a_pris_parole=False,  # pas encore en base
             a_depose_amendement=v["a_depose_amendement"],
+            votes=v["votes"],
+            amendements=v["amendements"],
         )
         for d, v in sorted(data.items())
     ]

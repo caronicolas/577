@@ -30,7 +30,7 @@
     if (mode === 'groupe') {
       for (const d of data) {
         if (d.place_hemicycle != null) {
-          map.set(d.place_hemicycle, d.groupe_couleur ?? '#cbcbcb');
+          map.set(d.place_hemicycle, d.groupe?.couleur ?? '#cbcbcb');
         }
       }
     } else {
@@ -100,6 +100,7 @@
         onmouseenter={(e) => handleMouseEnter(e, seat)}
         onmouseleave={handleMouseLeave}
         onclick={() => handleClick(seat)}
+        onkeydown={(e) => e.key === 'Enter' && handleClick(seat)}
         role="button"
         tabindex="-1"
         aria-label="Siège {seat.place}"
