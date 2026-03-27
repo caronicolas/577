@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import ActivityCalendar from '$lib/components/ActivityCalendar.svelte';
+  import { apiBase } from '$lib/api';
 
   const id = $derived($page.params.id);
 
@@ -21,10 +22,10 @@
     loading = true;
     error = null;
     Promise.all([
-      fetch(`/api/deputes/${id}`).then((r) => r.json()),
-      fetch(`/api/amendements?depute_id=${id}&limit=100`).then((r) => r.json()),
-      fetch(`/api/votes?depute_id=${id}&limit=100`).then((r) => r.json()),
-      fetch(`/api/deputes/${id}/activites`).then((r) => r.json()),
+      fetch(`${apiBase}/api/deputes/${id}`).then((r) => r.json()),
+      fetch(`${apiBase}/api/amendements?depute_id=${id}&limit=100`).then((r) => r.json()),
+      fetch(`${apiBase}/api/votes?depute_id=${id}&limit=100`).then((r) => r.json()),
+      fetch(`${apiBase}/api/deputes/${id}/activites`).then((r) => r.json()),
     ])
       .then(([d, a, v, act]) => {
         depute = d;

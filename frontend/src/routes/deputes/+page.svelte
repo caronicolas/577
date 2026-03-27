@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiBase } from '$lib/api';
   let search = $state('');
   let groupe = $state('');
   let departement = $state('');
@@ -14,7 +15,7 @@
     params.set('limit', '600');
 
     loading = true;
-    fetch(`/api/deputes?${params}`)
+    fetch(`${apiBase}/api/deputes?${params}`)
       .then((r) => r.json())
       .then((data) => {
         deputes = data.items ?? [];

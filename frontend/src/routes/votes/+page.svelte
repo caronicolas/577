@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiBase } from '$lib/api';
   const PAGE_SIZE = 50;
 
   let search = $state('');
@@ -13,7 +14,7 @@
     scrutins = [];
     const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
     if (q) params.set('q', q);
-    fetch(`/api/votes?${params}`)
+    fetch(`${apiBase}/api/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
         scrutins = data.items ?? [];
@@ -29,7 +30,7 @@
       offset: String(scrutins.length),
     });
     if (search) params.set('q', search);
-    fetch(`/api/votes?${params}`)
+    fetch(`${apiBase}/api/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
         scrutins = [...scrutins, ...(data.items ?? [])];

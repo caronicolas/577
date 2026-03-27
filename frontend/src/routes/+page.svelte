@@ -1,12 +1,13 @@
 <script lang="ts">
   import Hemicycle from '$lib/components/Hemicycle.svelte';
+  import { apiBase } from '$lib/api';
 
   let deputes = $state<any[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
   $effect(() => {
-    fetch('/api/deputes?limit=577')
+    fetch(`${apiBase}/api/deputes?limit=577`)
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((data) => {
         deputes = data.items ?? [];

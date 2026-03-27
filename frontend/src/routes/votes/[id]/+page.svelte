@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import Hemicycle from '$lib/components/Hemicycle.svelte';
+  import { apiBase } from '$lib/api';
 
   const id = $derived($page.params.id);
 
@@ -12,7 +13,7 @@
   $effect(() => {
     loading = true;
     selectedGroupe = null;
-    fetch(`/api/votes/${id}`)
+    fetch(`${apiBase}/api/votes/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Scrutin introuvable');
         return r.json();
