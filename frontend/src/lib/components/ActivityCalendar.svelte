@@ -103,27 +103,43 @@
     activite: Activite | null;
     x: number;
     y: number;
+    anchorY: number; // centre vertical de la cellule survolée
   }
 
   let tooltip = $state<TooltipState | null>(null);
+  let tooltipEl = $state<HTMLElement | null>(null);
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function positionTooltip(cell: DOMRect): { x: number; y: number } {
+  // Après chaque rendu du tooltip, on ajuste y en fonction de la vraie hauteur
+  $effect(() => {
+    if (!tooltipEl || !tooltip) return;
+    const h = tooltipEl.offsetHeight;
+    const MARGIN = 8;
+    const ideal = tooltip.anchorY - h / 2;
+    const clamped = Math.max(MARGIN, Math.min(ideal, window.innerHeight - h - MARGIN));
+    if (clamped !== tooltip.y) {
+      tooltip = { ...tooltip, y: clamped };
+    }
+  });
+
+  function tooltipX(cell: DOMRect): number {
     const TOOLTIP_W = 340;
     const MARGIN = 8;
-    const maxH = window.innerHeight - 2 * MARGIN;
-    let x = cell.right + MARGIN;
-    let y = cell.top + cell.height / 2 - maxH / 2;
-    if (x + TOOLTIP_W > window.innerWidth) x = cell.left - TOOLTIP_W - MARGIN;
-    y = Math.max(MARGIN, Math.min(y, window.innerHeight - MARGIN - 40));
-    return { x, y };
+    const right = cell.right + MARGIN;
+    return right + TOOLTIP_W > window.innerWidth ? cell.left - TOOLTIP_W - MARGIN : right;
   }
 
   function handleMouseEnter(e: MouseEvent, date: string) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     const cell = (e.currentTarget as SVGRectElement).getBoundingClientRect();
-    const { x, y } = positionTooltip(cell);
-    tooltip = { date, activite: activiteByDate.get(date) ?? null, x, y };
+    const anchorY = cell.top + cell.height / 2;
+    tooltip = {
+      date,
+      activite: activiteByDate.get(date) ?? null,
+      x: tooltipX(cell),
+      y: anchorY, // position initiale — sera corrigée par $effect
+      anchorY,
+    };
   }
 
   function handleCellLeave() {
@@ -198,6 +214,7 @@
   <div
     class="tooltip"
     style="left: {tooltip.x}px; top: {tooltip.y}px"
+    bind:this={tooltipEl}
     onmouseenter={handleTooltipEnter}
     onmouseleave={handleTooltipLeave}
     role="tooltip"
