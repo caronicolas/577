@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/stores';
+  import { dev } from '$app/environment';
 
   const navLinks = [
     { href: '/', label: 'Hémicycle' },
@@ -11,6 +12,14 @@
 
 <svelte:head>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  {#if !dev}
+    <!-- Privacy-friendly analytics by Plausible -->
+    <script async src="https://plausible.io/js/pa--kTp7JiBCiBxu4gDeoYlj.js"></script>
+    <script>
+      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+      plausible.init()
+    </script>
+  {/if}
 </svelte:head>
 
 <header>
