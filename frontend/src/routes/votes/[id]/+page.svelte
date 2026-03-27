@@ -7,9 +7,11 @@
   let scrutin = $state<any>(null);
   let loading = $state(true);
   let error = $state<string | null>(null);
+  let selectedGroupe = $state<string | null>(null);
 
   $effect(() => {
     loading = true;
+    selectedGroupe = null;
     fetch(`/api/votes/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Scrutin introuvable');
@@ -24,6 +26,43 @@
         loading = false;
       });
   });
+
+  function toggleGroupe(sigle: string) {
+    selectedGroupe = selectedGroupe === sigle ? null : sigle;
+  }
+
+  interface GroupeStats {
+    sigle: string;
+    couleur: string;
+    pour: number;
+    contre: number;
+    abstention: number;
+    nonVotant: number;
+    total: number;
+  }
+
+  const groupeStats = $derived.by((): GroupeStats[] => {
+    if (!scrutin?.votes) return [];
+    const map = new Map<string, GroupeStats>();
+    for (const v of scrutin.votes) {
+      const sigle = v.groupe_sigle ?? '?';
+      const couleur = v.groupe_couleur ?? '#cbcbcb';
+      if (!map.has(sigle)) {
+        map.set(sigle, { sigle, couleur, pour: 0, contre: 0, abstention: 0, nonVotant: 0, total: 0 });
+      }
+      const g = map.get(sigle)!;
+      g.total++;
+      if (v.position === 'pour') g.pour++;
+      else if (v.position === 'contre') g.contre++;
+      else if (v.position === 'abstention') g.abstention++;
+      else g.nonVotant++;
+    }
+    return [...map.values()].sort((a, b) => b.total - a.total);
+  });
+
+  const totalPour = $derived(groupeStats.reduce((s, g) => s + g.pour, 0));
+  const totalContre = $derived(groupeStats.reduce((s, g) => s + g.contre, 0));
+  const totalAbstention = $derived(groupeStats.reduce((s, g) => s + g.abstention, 0));
 </script>
 
 <svelte:head>
@@ -67,7 +106,49 @@
     {/if}
   </div>
 
-  <Hemicycle mode="vote" data={scrutin.votes} />
+  <div class="legend">
+    {#each groupeStats as g}
+      <button
+        class="legend-item"
+        class:active={selectedGroupe === g.sigle}
+        class:dimmed={selectedGroupe !== null && selectedGroupe !== g.sigle}
+        onclick={() => toggleGroupe(g.sigle)}
+        title={selectedGroupe === g.sigle ? 'Réinitialiser' : g.sigle}
+      >
+        <span class="swatch" style="background: {g.couleur}"></span>
+        <span class="sigle">{g.sigle}</span>
+        <span class="count">({g.total})</span>
+      </button>
+    {/each}
+  </div>
+
+  <Hemicycle mode="vote" data={scrutin.votes} {selectedGroupe} />
+
+  <div class="chart">
+    {#each [
+      { label: 'Pour', total: totalPour, position: 'pour' as const, cls: 'pour' },
+      { label: 'Contre', total: totalContre, position: 'contre' as const, cls: 'contre' },
+      { label: 'Abstention', total: totalAbstention, position: 'abstention' as const, cls: 'abst' },
+    ] as row}
+      {#if row.total > 0}
+        <div class="chart-row">
+          <span class="chart-label {row.cls}">{row.label}</span>
+          <div class="bar-track">
+            {#each groupeStats.filter(g => g[row.position] > 0) as g}
+              {@const pct = (g[row.position] / row.total) * 100}
+              <div
+                class="bar-seg"
+                class:dimmed={selectedGroupe !== null && selectedGroupe !== g.sigle}
+                style="width: {pct}%; background: {g.couleur}"
+                title="{g.sigle} : {g[row.position]} {row.label.toLowerCase()}"
+              ></div>
+            {/each}
+          </div>
+          <span class="chart-count">{row.total}</span>
+        </div>
+      {/if}
+    {/each}
+  </div>
 {/if}
 
 <style>
@@ -105,4 +186,91 @@
 
   .muted, .error { color: var(--color-text-muted); }
   .error { color: var(--color-absent); }
+
+  /* Légende groupes */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.75rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    max-width: 900px;
+    margin-inline: auto;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: none;
+    cursor: pointer;
+    color: inherit;
+    transition: background 0.12s, opacity 0.12s, border-color 0.12s;
+  }
+
+  .legend-item:hover { background: var(--color-border); }
+  .legend-item.active { border-color: var(--color-border); background: var(--color-surface); }
+  .legend-item.dimmed { opacity: 0.35; }
+
+  .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .sigle { font-weight: 700; }
+  .count { color: var(--color-text-muted); font-size: 0.72rem; }
+
+  /* Graphique barres */
+  .chart {
+    max-width: 900px;
+    margin: 1.5rem auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .chart-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 40px;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .chart-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .chart-label.pour { color: var(--color-vote); }
+  .chart-label.contre { color: var(--color-absent); }
+  .chart-label.abst { color: var(--color-text-muted); }
+
+  .bar-track {
+    display: flex;
+    height: 20px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--color-border);
+  }
+
+  .bar-seg {
+    height: 100%;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .bar-seg.dimmed { opacity: 0.2; }
+
+  .chart-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
 </style>

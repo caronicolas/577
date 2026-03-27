@@ -40,7 +40,8 @@
     } else {
       for (const v of data) {
         if (v.place_hemicycle != null) {
-          map.set(v.place_hemicycle, VOTE_COLORS[v.position] ?? '#cbcbcb');
+          const isFiltered = selectedGroupe !== null && v.groupe_sigle !== selectedGroupe;
+          map.set(v.place_hemicycle, isFiltered ? DIMMED_COLOR : (VOTE_COLORS[v.position] ?? '#cbcbcb'));
         }
       }
     }
