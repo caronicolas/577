@@ -13,7 +13,7 @@
   $effect(() => {
     loading = true;
     selectedGroupe = null;
-    fetch(`${apiBase}/api/votes/${id}`)
+    fetch(`${apiBase}/votes/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Scrutin introuvable');
         return r.json();

@@ -22,10 +22,10 @@
     loading = true;
     error = null;
     Promise.all([
-      fetch(`${apiBase}/api/deputes/${id}`).then((r) => r.json()),
-      fetch(`${apiBase}/api/amendements?depute_id=${id}&limit=100`).then((r) => r.json()),
-      fetch(`${apiBase}/api/votes?depute_id=${id}&limit=100`).then((r) => r.json()),
-      fetch(`${apiBase}/api/deputes/${id}/activites`).then((r) => r.json()),
+      fetch(`${apiBase}/deputes/${id}`).then((r) => r.json()),
+      fetch(`${apiBase}/amendements?depute_id=${id}&limit=100`).then((r) => r.json()),
+      fetch(`${apiBase}/votes?depute_id=${id}&limit=100`).then((r) => r.json()),
+      fetch(`${apiBase}/deputes/${id}/activites`).then((r) => r.json()),
     ])
       .then(([d, a, v, act]) => {
         depute = d;

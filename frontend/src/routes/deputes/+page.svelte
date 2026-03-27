@@ -15,7 +15,7 @@
     params.set('limit', '600');
 
     loading = true;
-    fetch(`${apiBase}/api/deputes?${params}`)
+    fetch(`${apiBase}/deputes?${params}`)
       .then((r) => r.json())
       .then((data) => {
         deputes = data.items ?? [];

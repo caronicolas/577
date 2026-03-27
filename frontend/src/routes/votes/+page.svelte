@@ -14,7 +14,7 @@
     scrutins = [];
     const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
     if (q) params.set('q', q);
-    fetch(`${apiBase}/api/votes?${params}`)
+    fetch(`${apiBase}/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
         scrutins = data.items ?? [];
@@ -30,7 +30,7 @@
       offset: String(scrutins.length),
     });
     if (search) params.set('q', search);
-    fetch(`${apiBase}/api/votes?${params}`)
+    fetch(`${apiBase}/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
         scrutins = [...scrutins, ...(data.items ?? [])];

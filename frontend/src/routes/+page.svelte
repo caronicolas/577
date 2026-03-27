@@ -7,7 +7,7 @@
   let error = $state<string | null>(null);
 
   $effect(() => {
-    fetch(`${apiBase}/api/deputes?limit=577`)
+    fetch(`${apiBase}/deputes?limit=577`)
       .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then((data) => {
         deputes = data.items ?? [];
