@@ -111,11 +111,12 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
         sexe = "F" if civ.startswith("Mme") else ("M" if civ.startswith("M") else None)
 
         profession_raw = acteur.get("profession", {})
-        profession = (
+        profession_val = (
             profession_raw.get("libelleCourant")
             if isinstance(profession_raw, dict)
             else None
         )
+        profession = profession_val if isinstance(profession_val, str) else None
 
         mandats = _as_list(acteur.get("mandats", {}).get("mandat"))
         mandat_an = _find_mandat_an(mandats)
@@ -299,10 +300,7 @@ _UPSERT = """
         %(date_naissance)s, %(profession)s, %(num_departement)s,
         %(nom_circonscription)s, %(num_circonscription)s, %(place_hemicycle)s,
         %(url_photo)s, %(url_an)s, %(mandat_debut)s, %(mandat_fin)s,
-        %(legislature)s,
-        CASE WHEN EXISTS (SELECT 1 FROM organes WHERE id = %(groupe_id)s)
-             THEN %(groupe_id)s ELSE NULL END,
-        now()
+        %(legislature)s, %(groupe_id)s, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         nom                 = EXCLUDED.nom,
@@ -327,7 +325,14 @@ _UPSERT = """
 
 async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:
     async with await psycopg.AsyncConnection.connect(**_get_conn_params()) as conn:
+        # Récupère les IDs d'organes valides pour filtrer en Python (évite
+        # le CASE WHEN EXISTS côté SQL qui cause des erreurs psycopg avec
+        # les paramètres nommés dans les sous-requêtes).
+        rows = await conn.execute("SELECT id FROM organes")
+        valid_organe_ids = {r[0] async for r in rows}
+
         for d in deputes:
+            groupe_id = d.groupe_id if d.groupe_id in valid_organe_ids else None
             await conn.execute(
                 _UPSERT,
                 {
@@ -347,7 +352,7 @@ async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:
                     "mandat_debut": d.mandat_debut,
                     "mandat_fin": d.mandat_fin,
                     "legislature": d.legislature,
-                    "groupe_id": d.groupe_id,
+                    "groupe_id": groupe_id,
                 },
             )
         await conn.commit()
