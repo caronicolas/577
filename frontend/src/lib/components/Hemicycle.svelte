@@ -9,9 +9,10 @@
     mode: Mode;
     /** mode=groupe : tableau de DeputeListItem  |  mode=vote : tableau de VoteDeputeItem */
     data: any[];
+    selectedGroupe?: string | null;
   }
 
-  const { mode, data }: Props = $props();
+  const { mode, data, selectedGroupe = null }: Props = $props();
 
   const SVG_W = seatsData.svg_width;
   const SVG_H = seatsData.svg_height;
@@ -24,13 +25,16 @@
     nonVotant: '#2d3748',
   };
 
+  const DIMMED_COLOR = '#e2e8f0';
+
   /** Construit un map place → couleur selon le mode. */
   const colorByPlace = $derived.by(() => {
     const map = new Map<number, string>();
     if (mode === 'groupe') {
       for (const d of data) {
         if (d.place_hemicycle != null) {
-          map.set(d.place_hemicycle, d.groupe?.couleur ?? '#cbcbcb');
+          const isFiltered = selectedGroupe !== null && d.groupe?.sigle !== selectedGroupe;
+          map.set(d.place_hemicycle, isFiltered ? DIMMED_COLOR : (d.groupe?.couleur ?? '#cbcbcb'));
         }
       }
     } else {

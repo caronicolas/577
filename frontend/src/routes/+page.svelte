@@ -31,6 +31,12 @@
     }
     return [...seen.values()].sort((a, b) => b.count - a.count);
   });
+
+  let selectedGroupe = $state<string | null>(null);
+
+  function toggleGroupe(sigle: string) {
+    selectedGroupe = selectedGroupe === sigle ? null : sigle;
+  }
 </script>
 
 <svelte:head>
@@ -47,17 +53,23 @@
 {:else if error}
   <div class="error">{error}</div>
 {:else}
-  <Hemicycle mode="groupe" data={deputes} />
   <div class="legend">
     {#each groupes as g}
-      <div class="legend-item">
+      <button
+        class="legend-item"
+        class:active={selectedGroupe === g.sigle}
+        class:dimmed={selectedGroupe !== null && selectedGroupe !== g.sigle}
+        onclick={() => toggleGroupe(g.sigle)}
+        title={selectedGroupe === g.sigle ? 'Réinitialiser le filtre' : `Filtrer : ${g.libelle}`}
+      >
         <span class="swatch" style="background: {g.couleur}"></span>
         <span class="sigle">{g.sigle}</span>
         <span class="libelle">{g.libelle}</span>
         <span class="count">({g.count})</span>
-      </div>
+      </button>
     {/each}
   </div>
+  <Hemicycle mode="groupe" data={deputes} {selectedGroupe} />
 {/if}
 
 <style>
@@ -85,8 +97,8 @@
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1.25rem;
-    margin-top: 1.5rem;
+    gap: 0.4rem 0.75rem;
+    margin-bottom: 1rem;
     max-width: 900px;
     margin-inline: auto;
   }
@@ -96,11 +108,31 @@
     align-items: center;
     gap: 0.4rem;
     font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: none;
+    cursor: pointer;
+    color: inherit;
+    transition: background 0.12s, opacity 0.12s, border-color 0.12s;
+  }
+
+  .legend-item:hover {
+    background: var(--color-border);
+  }
+
+  .legend-item.active {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+
+  .legend-item.dimmed {
+    opacity: 0.35;
   }
 
   .swatch {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 2px;
     flex-shrink: 0;
   }
