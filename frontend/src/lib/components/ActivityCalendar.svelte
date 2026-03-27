@@ -110,15 +110,12 @@
 
   function positionTooltip(cell: DOMRect): { x: number; y: number } {
     const TOOLTIP_W = 340;
-    const TOOLTIP_H = 200;
     const MARGIN = 8;
-    // Par défaut à droite, centré verticalement sur la cellule
+    const maxH = window.innerHeight - 2 * MARGIN;
     let x = cell.right + MARGIN;
-    let y = cell.top + cell.height / 2 - TOOLTIP_H / 2;
-    // Bascule à gauche si ça dépasse
+    let y = cell.top + cell.height / 2 - maxH / 2;
     if (x + TOOLTIP_W > window.innerWidth) x = cell.left - TOOLTIP_W - MARGIN;
-    // Clampe verticalement dans le viewport
-    y = Math.max(8, Math.min(y, window.innerHeight - TOOLTIP_H - 8));
+    y = Math.max(MARGIN, Math.min(y, window.innerHeight - MARGIN - 40));
     return { x, y };
   }
 
@@ -281,6 +278,8 @@
     font-size: 0.8rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     max-width: 340px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     z-index: 1000;
   }
 
