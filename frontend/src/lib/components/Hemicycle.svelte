@@ -58,19 +58,33 @@
   });
 
   let tooltip = $state<{ depute: any; x: number; y: number } | null>(null);
+  const TOOLTIP_ID = 'hemicycle-tooltip';
+
+  function showTooltip(depute: any, x: number, y: number) {
+    tooltip = { depute, x, y };
+  }
 
   function handleMouseEnter(e: MouseEvent, seat: (typeof seatsData.seats)[0]) {
     const d = dataByPlace.get(seat.place);
     if (!d) return;
     const rect = (e.currentTarget as SVGElement).closest('svg')!.getBoundingClientRect();
-    tooltip = {
-      depute: d,
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
+    showTooltip(d, e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  function handleFocus(e: FocusEvent, seat: (typeof seatsData.seats)[0]) {
+    const d = dataByPlace.get(seat.place);
+    if (!d) return;
+    const el = e.currentTarget as SVGElement;
+    const rect = el.closest('svg')!.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    showTooltip(d, elRect.left - rect.left + SEAT_SIZE, elRect.top - rect.top);
   }
 
   function handleMouseLeave() {
+    tooltip = null;
+  }
+
+  function handleBlur() {
     tooltip = null;
   }
 
@@ -80,17 +94,31 @@
     const id = d.depute_id ?? d.id;
     if (id) goto(`/deputes/${id}`);
   }
+
+  function seatAriaLabel(seat: (typeof seatsData.seats)[0]): string {
+    const d = dataByPlace.get(seat.place);
+    if (!d) return `Siège vide ${seat.place}`;
+    const nom = d.nom ?? d.depute_id ?? '';
+    if (mode === 'groupe') {
+      const groupe = d.groupe?.sigle ?? '';
+      return groupe ? `${nom}, ${groupe}, siège ${seat.place}` : `${nom}, siège ${seat.place}`;
+    }
+    const pos = d.position ? `, ${d.position}` : '';
+    return `${nom}${pos}, siège ${seat.place}`;
+  }
 </script>
 
 <div class="hemicycle-wrapper">
   <svg
     viewBox="0 0 {SVG_W} {SVG_H}"
     xmlns="http://www.w3.org/2000/svg"
-    aria-label="Hémicycle de l'Assemblée Nationale"
+    aria-label="Hémicycle de l'Assemblée Nationale — {data.length} députés"
     role="img"
   >
     {#each seatsData.seats as seat (seat.place)}
       {@const color = colorByPlace.get(seat.place) ?? '#e2e8f0'}
+      {@const interactive = dataByPlace.has(seat.place)}
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <rect
         x={seat.x - SEAT_SIZE / 2}
         y={seat.y - SEAT_SIZE / 2}
@@ -101,20 +129,23 @@
         stroke-width="0.5"
         rx="1"
         class="seat"
-        class:interactive={dataByPlace.has(seat.place)}
+        class:interactive
         onmouseenter={(e) => handleMouseEnter(e, seat)}
         onmouseleave={handleMouseLeave}
+        onfocus={(e) => handleFocus(e, seat)}
+        onblur={handleBlur}
         onclick={() => handleClick(seat)}
-        onkeydown={(e) => e.key === 'Enter' && handleClick(seat)}
-        role="button"
-        tabindex="-1"
-        aria-label="Siège {seat.place}"
+        onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick(seat)}
+        role={interactive ? 'button' : 'presentation'}
+        tabindex={interactive ? 0 : undefined}
+        aria-label={interactive ? seatAriaLabel(seat) : undefined}
+        aria-describedby={interactive && tooltip?.depute === dataByPlace.get(seat.place) ? TOOLTIP_ID : undefined}
       />
     {/each}
   </svg>
 
   {#if tooltip}
-    <HemicycleTooltip depute={tooltip.depute} x={tooltip.x} y={tooltip.y} {mode} />
+    <HemicycleTooltip id={TOOLTIP_ID} depute={tooltip.depute} x={tooltip.x} y={tooltip.y} {mode} />
   {/if}
 </div>
 
@@ -144,5 +175,12 @@
     opacity: 0.75;
     stroke: #000;
     stroke-width: 1;
+  }
+
+  .seat.interactive:focus {
+    outline: none;
+    stroke: #1a56db;
+    stroke-width: 1.5;
+    opacity: 0.9;
   }
 </style>

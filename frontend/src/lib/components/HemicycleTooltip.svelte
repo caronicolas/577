@@ -1,12 +1,13 @@
 <script lang="ts">
   interface Props {
+    id: string;
     depute: any;
     x: number;
     y: number;
     mode: 'groupe' | 'vote';
   }
 
-  const { depute, x, y, mode }: Props = $props();
+  const { id, depute, x, y, mode }: Props = $props();
 
   const POSITION_LABEL: Record<string, string> = {
     pour: 'Pour',
@@ -17,9 +18,11 @@
 </script>
 
 <div
+  {id}
   class="tooltip"
   style="left: {x + 12}px; top: {y - 8}px"
   role="tooltip"
+  aria-live="polite"
 >
   <div class="tooltip-inner">
     {#if depute.url_photo}
@@ -99,7 +102,7 @@
 
   .position[data-pos="pour"] { color: #38a169; }
   .position[data-pos="contre"] { color: #e53e3e; }
-  .position[data-pos="abstention"] { color: #a0aec0; }
+  .position[data-pos="abstention"] { color: #718096; }
   .position[data-pos="nonVotant"] { color: #2d3748; }
 
   .groupe-libelle {
