@@ -64,6 +64,18 @@
   const totalContre = $derived(groupeStats.reduce((s, g) => s + g.contre, 0));
   const totalAbstention = $derived(groupeStats.reduce((s, g) => s + g.abstention, 0));
   const maxVotes = $derived(Math.max(totalPour, totalContre, totalAbstention, 1));
+
+  let barTooltip = $state<{ libelle: string; count: number; label: string; x: number; y: number } | null>(null);
+
+  function showBarTooltip(e: MouseEvent, g: GroupeStats, label: string, count: number) {
+    barTooltip = { libelle: g.sigle, count, label, x: e.clientX, y: e.clientY };
+  }
+
+  function moveBarTooltip(e: MouseEvent) {
+    if (barTooltip) { barTooltip = { ...barTooltip, x: e.clientX, y: e.clientY }; }
+  }
+
+  function hideBarTooltip() { barTooltip = null; }
 </script>
 
 <svelte:head>
@@ -141,7 +153,11 @@
                 class="bar-seg"
                 class:dimmed={selectedGroupe !== null && selectedGroupe !== g.sigle}
                 style="width: {pct}%; background: {g.couleur}"
-                title="{g.sigle} : {g[row.position]} {row.label.toLowerCase()}"
+                onmouseenter={(e) => showBarTooltip(e, g, row.label, g[row.position])}
+                onmousemove={moveBarTooltip}
+                onmouseleave={hideBarTooltip}
+                role="img"
+                aria-label="{g.sigle} : {g[row.position]} {row.label.toLowerCase()}"
               ></div>
             {/each}
           </div>
@@ -149,6 +165,17 @@
         </div>
       {/if}
     {/each}
+  </div>
+{/if}
+
+{#if barTooltip}
+  <div
+    class="bar-tooltip"
+    style="left: {barTooltip.x + 12}px; top: {barTooltip.y - 8}px"
+    role="tooltip"
+  >
+    <strong>{barTooltip.libelle}</strong>
+    <span>{barTooltip.count} {barTooltip.label.toLowerCase()}</span>
   </div>
 {/if}
 
@@ -187,6 +214,22 @@
 
   .muted, .error { color: var(--color-text-muted); }
   .error { color: var(--color-absent); }
+
+  .bar-tooltip {
+    position: fixed;
+    z-index: 300;
+    pointer-events: none;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0.4rem 0.65rem;
+    box-shadow: var(--shadow-md);
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    white-space: nowrap;
+  }
 
   /* Légende groupes */
   .legend {
