@@ -63,6 +63,7 @@
   const totalPour = $derived(groupeStats.reduce((s, g) => s + g.pour, 0));
   const totalContre = $derived(groupeStats.reduce((s, g) => s + g.contre, 0));
   const totalAbstention = $derived(groupeStats.reduce((s, g) => s + g.abstention, 0));
+  const maxVotes = $derived(Math.max(totalPour, totalContre, totalAbstention, 1));
 </script>
 
 <svelte:head>
@@ -133,7 +134,7 @@
       {#if row.total > 0}
         <div class="chart-row">
           <span class="chart-label {row.cls}">{row.label}</span>
-          <div class="bar-track">
+          <div class="bar-track" style="width: {(row.total / maxVotes) * 100}%">
             {#each groupeStats.filter(g => g[row.position] > 0) as g}
               {@const pct = (g[row.position] / row.total) * 100}
               <div
@@ -257,7 +258,7 @@
     height: 20px;
     border-radius: var(--radius-sm);
     overflow: hidden;
-    background: var(--color-border);
+    min-width: 2px;
   }
 
   .bar-seg {
