@@ -9,9 +9,22 @@
   ];
 </script>
 
+<svelte:head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</svelte:head>
+
 <header>
   <nav class="container">
-    <a href="/" class="brand">🏛️ Assemblée Nationale</a>
+    <a href="/" class="brand">
+      <svg viewBox="0 0 32 32" class="brand-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <g fill="currentColor">
+          <circle cx="10.02" cy="27.48" r="1.2"/><circle cx="10.99" cy="24.7" r="1.2"/><circle cx="13.15" cy="22.72" r="1.2"/><circle cx="16.0" cy="22.0" r="1.2"/><circle cx="18.85" cy="22.72" r="1.2"/><circle cx="21.01" cy="24.7" r="1.2"/><circle cx="21.98" cy="27.48" r="1.2"/>
+          <circle cx="6.04" cy="27.13" r="1.2"/><circle cx="6.73" cy="24.25" r="1.2"/><circle cx="8.23" cy="21.71" r="1.2"/><circle cx="10.41" cy="19.71" r="1.2"/><circle cx="13.08" cy="18.44" r="1.2"/><circle cx="16.0" cy="18.0" r="1.2"/><circle cx="18.92" cy="18.44" r="1.2"/><circle cx="21.59" cy="19.71" r="1.2"/><circle cx="23.77" cy="21.71" r="1.2"/><circle cx="25.27" cy="24.25" r="1.2"/><circle cx="25.96" cy="27.13" r="1.2"/>
+          <circle cx="2.05" cy="26.78" r="1.2"/><circle cx="2.62" cy="23.87" r="1.2"/><circle cx="3.79" cy="21.15" r="1.2"/><circle cx="5.5" cy="18.74" r="1.2"/><circle cx="7.69" cy="16.74" r="1.2"/><circle cx="10.24" cy="15.24" r="1.2"/><circle cx="13.06" cy="14.31" r="1.2"/><circle cx="16.0" cy="14.0" r="1.2"/><circle cx="18.94" cy="14.31" r="1.2"/><circle cx="21.76" cy="15.24" r="1.2"/><circle cx="24.31" cy="16.74" r="1.2"/><circle cx="26.5" cy="18.74" r="1.2"/><circle cx="28.21" cy="21.15" r="1.2"/><circle cx="29.38" cy="23.87" r="1.2"/><circle cx="29.95" cy="26.78" r="1.2"/>
+        </g>
+      </svg>
+      les 577
+    </a>
     <ul>
       {#each navLinks as link}
         <li>
@@ -64,10 +77,19 @@
   }
 
   .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-weight: 700;
     font-size: 1rem;
     color: var(--color-text);
     white-space: nowrap;
+  }
+
+  .brand-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
   }
 
   ul {
