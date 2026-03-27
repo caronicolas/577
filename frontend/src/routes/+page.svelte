@@ -41,7 +41,10 @@
 </script>
 
 <svelte:head>
-  <title>Hémicycle — Assemblée Nationale</title>
+  <title>Hémicycle interactif — les 577</title>
+  <meta name="description" content="Visualisez l'hémicycle de l'Assemblée Nationale en temps réel. 577 sièges colorés par groupe parlementaire, 17e législature." />
+  <meta property="og:title" content="Hémicycle interactif — les 577" />
+  <meta property="og:description" content="Visualisez l'hémicycle de l'Assemblée Nationale en temps réel. 577 sièges colorés par groupe parlementaire, 17e législature." />
 </svelte:head>
 
 <section class="hero">

@@ -26,7 +26,10 @@
 </script>
 
 <svelte:head>
-  <title>Députés — Assemblée Nationale</title>
+  <title>Les 577 députés — les 577</title>
+  <meta name="description" content="Liste des 577 députés de l'Assemblée Nationale, 17e législature. Filtrez par groupe parlementaire, département ou recherchez par nom." />
+  <meta property="og:title" content="Les 577 députés — les 577" />
+  <meta property="og:description" content="Liste des 577 députés de l'Assemblée Nationale, 17e législature. Filtrez par groupe parlementaire, département ou recherchez par nom." />
 </svelte:head>
 
 <div class="header">

@@ -80,7 +80,14 @@
 </script>
 
 <svelte:head>
-  <title>{scrutin?.titre ?? 'Scrutin'} — AN</title>
+  {#if scrutin}
+    <title>{scrutin.titre} — les 577</title>
+    <meta name="description" content="Scrutin n°{scrutin.numero} du {scrutin.date_seance} — {scrutin.titre}. Résultats détaillés et hémicycle interactif." />
+    <meta property="og:title" content="{scrutin.titre} — les 577" />
+    <meta property="og:description" content="Scrutin n°{scrutin.numero} du {scrutin.date_seance} — {scrutin.titre}. Résultats détaillés et hémicycle interactif." />
+  {:else}
+    <title>Scrutin — les 577</title>
+  {/if}
 </svelte:head>
 
 {#if loading}

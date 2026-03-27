@@ -40,7 +40,10 @@
 </script>
 
 <svelte:head>
-  <title>Votes — Assemblée Nationale</title>
+  <title>Scrutins et votes — les 577</title>
+  <meta name="description" content="Tous les scrutins publics de l'Assemblée Nationale, 17e législature. Résultats par groupe parlementaire, hémicycle interactif pour chaque vote." />
+  <meta property="og:title" content="Scrutins et votes — les 577" />
+  <meta property="og:description" content="Tous les scrutins publics de l'Assemblée Nationale, 17e législature. Résultats par groupe parlementaire, hémicycle interactif pour chaque vote." />
 </svelte:head>
 
 <div class="header">

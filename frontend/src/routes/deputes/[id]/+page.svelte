@@ -42,7 +42,19 @@
 </script>
 
 <svelte:head>
-  <title>{depute ? `${depute.prenom} ${depute.nom_de_famille}` : 'Député'} — AN</title>
+  {#if depute}
+    <title>{depute.prenom} {depute.nom_de_famille} — les 577</title>
+    <meta name="description" content="{depute.prenom} {depute.nom_de_famille}{depute.groupe ? `, ${depute.groupe.libelle}` : ''}{depute.nom_circonscription ? `, ${depute.nom_circonscription}` : ''}. Votes, amendements et activité à l'Assemblée Nationale." />
+    <meta property="og:title" content="{depute.prenom} {depute.nom_de_famille} — les 577" />
+    <meta property="og:description" content="{depute.prenom} {depute.nom_de_famille}{depute.groupe ? `, ${depute.groupe.libelle}` : ''}{depute.nom_circonscription ? `, ${depute.nom_circonscription}` : ''}. Votes, amendements et activité à l'Assemblée Nationale." />
+    {#if depute.url_photo}
+      <meta property="og:image" content={depute.url_photo} />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:image" content={depute.url_photo} />
+    {/if}
+  {:else}
+    <title>Député — les 577</title>
+  {/if}
 </svelte:head>
 
 {#if loading}
@@ -52,7 +64,7 @@
 {:else if depute}
   <div class="profile">
     {#if depute.url_photo}
-      <img src={depute.url_photo} alt={depute.nom} class="photo" />
+      <img src={depute.url_photo} alt={depute.nom} class="photo" loading="lazy" />
     {/if}
     <div class="meta">
       <h1>{depute.prenom} {depute.nom_de_famille}</h1>

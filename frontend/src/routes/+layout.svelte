@@ -11,7 +11,8 @@
 </script>
 
 <svelte:head>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="canonical" href="https://les577.fr{$page.url.pathname}" />
+  <meta property="og:url" content="https://les577.fr{$page.url.pathname}" />
   {#if !dev}
     <!-- Privacy-friendly analytics by Plausible -->
     <script async src="https://plausible.io/js/pa--kTp7JiBCiBxu4gDeoYlj.js"></script>
