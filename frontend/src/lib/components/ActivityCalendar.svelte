@@ -108,7 +108,14 @@
 
   let tooltip = $state<TooltipState | null>(null);
   let tooltipEl = $state<HTMLElement | null>(null);
+  let calendarEl = $state<HTMLElement | null>(null);
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+  $effect(() => {
+    if (calendarEl && weeks.length > 0) {
+      calendarEl.scrollLeft = calendarEl.scrollWidth;
+    }
+  });
 
   // Après chaque rendu du tooltip, on ajuste y en fonction de la vraie hauteur
   $effect(() => {
@@ -168,7 +175,7 @@
   };
 </script>
 
-<div class="calendar">
+<div class="calendar" bind:this={calendarEl}>
   <svg
     width={svgWidth}
     height={svgHeight + STEP}
