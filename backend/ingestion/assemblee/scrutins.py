@@ -143,8 +143,8 @@ def _normalise_scrutin(
         sort = scrutin.get("sort", {}).get("code")
 
         url_an = (
-            f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}"
-            f"/votes/{LEGISLATURE}_{uid}"
+            f"https://www2.assemblee-nationale.fr/scrutins/detail"
+            f"/(legislature)/{LEGISLATURE}/(num)/{numero}"
         )
 
         s = ScrutinNormalise(
