@@ -59,7 +59,21 @@
 {#if loading}
   <p class="muted">Chargement…</p>
 {:else}
-  <p class="count">{total} député{total > 1 ? 's' : ''}</p>
+  <p class="count">
+    {total} député{total > 1 ? 's' : ''}
+    {#if total > 577}
+      <span class="info-wrap" aria-describedby="info-tooltip">
+        <span class="info-icon" aria-label="Information sur le nombre de députés">ⓘ</span>
+        <span class="info-tooltip" id="info-tooltip" role="tooltip">
+          L'Assemblée compte 577 sièges, mais {total - 577} députés actifs n'ont pas encore
+          de siège attribué dans les données open data :
+          Charlotte Parmentier-Lecocq et Carole Guillerm (revenues après leur nomination
+          ministérielle sous le gouvernement Barnier) et Alim Latrèche (élu en janvier 2025).
+          Le total reflète les données officielles de l'Assemblée Nationale.
+        </span>
+      </span>
+    {/if}
+  </p>
   <ul class="grid">
     {#each deputes as d (d.id)}
       <li>
@@ -190,4 +204,42 @@
   }
 
   .muted { color: var(--color-text-muted); }
+
+  .info-wrap {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .info-icon {
+    cursor: default;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    user-select: none;
+  }
+
+  .info-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-text);
+    white-space: normal;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .info-wrap:hover .info-tooltip,
+  .info-wrap:focus-within .info-tooltip {
+    display: block;
+  }
 </style>
