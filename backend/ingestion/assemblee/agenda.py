@@ -116,92 +116,99 @@ def _extract_points_odj(odj_data) -> list[str]:
     for point in odj_data:
         if not isinstance(point, dict):
             continue
-        # resumeODJ peut être string ou dict avec #text
-        resume = point.get("resumeODJ")
-        if resume is None:
-            resume = point.get("libelle")
-        if isinstance(resume, dict):
-            resume = resume.get("#text") or resume.get("@libelle")
-        titre = _safe_str(resume)
+        # Champ réel : "objet" dans les pointODJ
+        titre = _safe_str(
+            point.get("objet") or point.get("libelle") or point.get("resumeODJ")
+        )
         if titre:
             titres.append(titre)
     return titres
 
 
-def _extract_depute_ids(participants_data) -> list[str]:
-    """Extrait les IDs des députés participants (acteurRef avec préfixe PA)."""
-    if not participants_data:
+def _extract_depute_ids_from_participants(participants: dict) -> list[str]:
+    """Extrait les IDs PA* depuis participantsInternes.participantInterne."""
+    if not isinstance(participants, dict):
         return []
-    if isinstance(participants_data, dict):
-        participants_data = [participants_data]
-    if not isinstance(participants_data, list):
+    internes = participants.get("participantsInternes") or {}
+    if not isinstance(internes, dict):
+        return []
+    # participantInterne peut être un dict (un seul) ou une liste
+    raw = internes.get("participantInterne") or []
+    if isinstance(raw, dict):
+        raw = [raw]
+    if not isinstance(raw, list):
         return []
     ids = []
-    for p in participants_data:
+    for p in raw:
         if not isinstance(p, dict):
             continue
-        acteur_ref = p.get("acteurRef") or p.get("acteur", {}).get("acteurRef")
-        if isinstance(acteur_ref, dict):
-            acteur_ref = acteur_ref.get("#text")
-        ref = _safe_str(acteur_ref)
+        ref = _safe_str(p.get("acteurRef"))
         if ref and ref.startswith("PA"):
             ids.append(ref)
     return ids
 
 
 def _is_senat(reunion_data: dict) -> bool:
-    """Détermine si c'est une réunion du Sénat."""
+    """Détermine si c'est une réunion du Sénat (UID RUSN* ou organe Sénat)."""
     uid = reunion_data.get("uid", "")
-    if isinstance(uid, str) and "RUSN" in uid:
+    if isinstance(uid, str) and uid.startswith("RUSN"):
         return True
-    organe_ref = reunion_data.get("organeRef") or reunion_data.get("organeReunionRef")
-    if isinstance(organe_ref, str) and SENAT_ORGANE_REF in organe_ref:
+    organe_ref = _safe_str(reunion_data.get("organeReuniRef"))
+    if organe_ref and SENAT_ORGANE_REF in organe_ref:
         return True
     return False
 
 
+def _parse_timestamp(ts) -> Optional[date]:
+    """Parse timeStampDebut (ISO datetime) → date."""
+    if not ts:
+        return None
+    return _parse_date(str(ts)[:10])
+
+
+def _extract_heure(ts) -> Optional[str]:
+    """Extrait HH:MM depuis un timeStamp ISO."""
+    if not ts:
+        return None
+    s = str(ts)
+    # Format : 2024-10-16T17:00:00.000+02:00
+    if "T" in s:
+        time_part = s.split("T")[1][:5]  # HH:MM
+        return time_part
+    return None
+
+
 def parse_seance(data: dict) -> Optional[SeanceNorm]:
-    """Parse un fichier séance_type."""
+    """Parse un fichier séance_type (UID *IDS*)."""
     reunion = data.get("reunion") or data
     uid = _safe_str(reunion.get("uid"))
     if not uid:
         return None
 
-    # Date depuis cycleDeVie.dateDebut ou dateSeance
-    cycle = reunion.get("cycleDeVie") or {}
-    date_str = (
-        cycle.get("dateDebut") or reunion.get("dateSeance") or reunion.get("date")
-    )
-    d = _parse_date(date_str)
+    ts = reunion.get("timeStampDebut")
+    d = _parse_timestamp(ts)
     if not d:
         return None
 
     is_senat = _is_senat(reunion)
+    xsi_type = _safe_str(reunion.get("@xsi:type"))
 
-    # Titre : libelleAbrev ou intitule ou libelle
-    titre = _safe_str(
-        reunion.get("libelleAbrev") or reunion.get("intitule") or reunion.get("libelle")
-    )
-
-    type_seance = _safe_str(
-        reunion.get("xsi:type") or reunion.get("typeSeance") or cycle.get("etat")
-    )
-
-    # Points ODJ
-    odj_raw = reunion.get("ordre_du_jour") or reunion.get("pointsODJ") or {}
-    if isinstance(odj_raw, dict):
-        points_list = odj_raw.get("pointODJ") or odj_raw.get("point") or []
+    # Points ODJ : ODJ.pointsODJ.pointODJ (dict ou liste)
+    odj = reunion.get("ODJ") or {}
+    points_odj_raw = (odj.get("pointsODJ") or {}).get("pointODJ")
+    if points_odj_raw is None:
+        points_list: list = []
+    elif isinstance(points_odj_raw, dict):
+        points_list = [points_odj_raw]
     else:
-        points_list = odj_raw
-    if not isinstance(points_list, list):
-        points_list = [points_list] if points_list else []
+        points_list = points_odj_raw if isinstance(points_odj_raw, list) else []
     points = _extract_points_odj(points_list)
 
     return SeanceNorm(
         id=uid,
         date=d,
-        titre=titre,
-        type_seance=type_seance,
+        titre=None,  # pas de titre global sur les séances
+        type_seance=xsi_type,
         is_senat=is_senat,
         legislature=LEGISLATURE,
         points_odj=points,
@@ -209,53 +216,38 @@ def parse_seance(data: dict) -> Optional[SeanceNorm]:
 
 
 def parse_reunion_commission(data: dict) -> Optional[ReunionCommissionNorm]:
-    """Parse un fichier reunionCommission_type."""
+    """Parse un fichier reunionCommission_type (UID *IDC*)."""
     reunion = data.get("reunion") or data
     uid = _safe_str(reunion.get("uid"))
     if not uid:
         return None
 
-    cycle = reunion.get("cycleDeVie") or {}
-    date_str = cycle.get("dateDebut") or reunion.get("dateDebut") or reunion.get("date")
-    d = _parse_date(date_str)
+    ts_debut = reunion.get("timeStampDebut")
+    ts_fin = reunion.get("timeStampFin")
+    d = _parse_timestamp(ts_debut)
     if not d:
         return None
 
     is_senat = _is_senat(reunion)
 
-    # Heures
-    heure_debut = _safe_str(cycle.get("heureDebut") or reunion.get("heureDebut"))
-    heure_fin = _safe_str(cycle.get("heureFin") or reunion.get("heureFin"))
+    heure_debut = _extract_heure(ts_debut)
+    heure_fin = _extract_heure(ts_fin)
 
-    # Titre
-    titre = _safe_str(
-        reunion.get("libelle") or reunion.get("libelleAbrev") or reunion.get("intitule")
-    )
+    # Organe de la commission
+    organe_id = _safe_str(reunion.get("organeReuniRef"))
 
-    # Organe (commission)
-    organe_ref = reunion.get("organeRef") or reunion.get("organeReunionRef")
-    if isinstance(organe_ref, dict):
-        organe_ref = organe_ref.get("#text")
-    organe_id = _safe_str(organe_ref)
-    organe_libelle = _safe_str(
-        reunion.get("libelleOrgane") or reunion.get("organeLibelle")
-    )
-
-    # Participants (présences)
-    participants_raw = reunion.get("participants") or reunion.get("presences") or {}
-    if isinstance(participants_raw, dict):
-        participants_list = (
-            participants_raw.get("participant")
-            or participants_raw.get("presence")
-            or []
-        )
+    # Points ODJ pour avoir le titre de la réunion
+    odj = reunion.get("ODJ") or {}
+    resume_odj = odj.get("resumeODJ")
+    if isinstance(resume_odj, dict):
+        first_val = next(iter(resume_odj.values()), None)
+        titre = _safe_str(resume_odj.get("#text") or first_val)
     else:
-        participants_list = participants_raw
+        titre = _safe_str(resume_odj)
 
-    if not isinstance(participants_list, list):
-        participants_list = [participants_list] if participants_list else []
-
-    depute_ids = _extract_depute_ids(participants_list)
+    # Participants internes (députés)
+    participants = reunion.get("participants") or {}
+    depute_ids = _extract_depute_ids_from_participants(participants)
 
     return ReunionCommissionNorm(
         id=uid,
@@ -264,7 +256,7 @@ def parse_reunion_commission(data: dict) -> Optional[ReunionCommissionNorm]:
         heure_fin=heure_fin,
         titre=titre,
         organe_id=organe_id,
-        organe_libelle=organe_libelle,
+        organe_libelle=None,  # résolu via JOIN organes en frontend
         is_senat=is_senat,
         legislature=LEGISLATURE,
         depute_ids=depute_ids,
@@ -280,33 +272,19 @@ def parse_file(
     except Exception:
         return None, None
 
-    # Discriminer le type
     reunion = data.get("reunion") or data
-    xsi_type = reunion.get("xsi:type", "")
+    xsi_type = _safe_str(reunion.get("@xsi:type")) or ""
 
-    # Les réunions de commission ont souvent "reunionCommission_type" ou un UID Cxxx
-    uid = reunion.get("uid", "")
-    is_commission = (
-        "reunionCommission" in xsi_type
-        or (isinstance(uid, str) and "RC" in uid)
-        or "commission" in xsi_type.lower()
-    )
-
-    # Certains fichiers sont des séances ordinaires
-    is_seance = (
-        "seance" in xsi_type.lower()
-        or (isinstance(uid, str) and uid.startswith("RUANR5L17S"))
-        or (isinstance(uid, str) and uid.startswith("RUSN"))
-    )
-
-    if is_commission and not is_seance:
+    if xsi_type == "seance_type":
+        return parse_seance(data), None
+    elif xsi_type == "reunionCommission_type":
         return None, parse_reunion_commission(data)
-    elif is_seance or not is_commission:
-        # Par défaut, traiter comme séance
-        seance = parse_seance(data)
-        if seance:
-            return seance, None
-        # Fallback commission
+
+    # Fallback par UID : IDS = séance, IDC = commission
+    uid = _safe_str(reunion.get("uid")) or ""
+    if "IDS" in uid:
+        return parse_seance(data), None
+    if "IDC" in uid:
         return None, parse_reunion_commission(data)
 
     return None, None
