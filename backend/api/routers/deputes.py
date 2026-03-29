@@ -8,7 +8,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from db.models import Amendement, Depute, Scrutin, VoteDepute
+from db.models import (
+    Amendement,
+    Depute,
+    PresenceCommission,
+    ReunionCommission,
+    Scrutin,
+    VoteDepute,
+)
 from db.session import get_session
 
 router = APIRouter()
@@ -60,14 +67,23 @@ class AmendementJour(BaseModel):
     url_an: Optional[str]
 
 
+class CommissionJour(BaseModel):
+    reunion_id: str
+    titre: Optional[str]
+    heure_debut: Optional[str]
+    organe_libelle: Optional[str]
+
+
 class Activite(BaseModel):
     date: date
     present: bool
     a_vote: bool
     a_pris_parole: bool
     a_depose_amendement: bool
+    a_commission: bool
     votes: list[VoteJour]
     amendements: list[AmendementJour]
+    commissions: list[CommissionJour]
 
 
 class ScrutinResume(BaseModel):
@@ -319,6 +335,27 @@ async def get_activites(
     )
     amend_rows = (await session.execute(amend_stmt)).all()
 
+    # -- Commissions : réunions auxquelles le député a participé -----------------
+    commissions_stmt = (
+        select(
+            ReunionCommission.id,
+            ReunionCommission.date,
+            ReunionCommission.titre,
+            ReunionCommission.heure_debut,
+            ReunionCommission.organe_libelle,
+        )
+        .join(
+            PresenceCommission,
+            PresenceCommission.reunion_id == ReunionCommission.id,
+        )
+        .where(
+            PresenceCommission.depute_id == depute_id,
+            ReunionCommission.date >= leg_debut,
+            ReunionCommission.date <= today,
+        )
+    )
+    commission_rows = (await session.execute(commissions_stmt)).all()
+
     # -- Agrégation par date -----------------------------------------------------
     POSITIONS_VOTEES = {"pour", "contre", "abstention"}
 
@@ -327,8 +364,10 @@ async def get_activites(
             "present": False,
             "a_vote": False,
             "a_depose_amendement": False,
+            "a_commission": False,
             "votes": [],
             "amendements": [],
+            "commissions": [],
         }
     )
 
@@ -348,6 +387,18 @@ async def get_activites(
             AmendementJour(id=amend_id, numero=numero, titre=titre, url_an=url_an)
         )
 
+    for reunion_id, d, titre, heure_debut, organe_libelle in commission_rows:
+        data[d]["a_commission"] = True
+        data[d]["present"] = True
+        data[d]["commissions"].append(
+            CommissionJour(
+                reunion_id=reunion_id,
+                titre=titre,
+                heure_debut=heure_debut,
+                organe_libelle=organe_libelle,
+            )
+        )
+
     return [
         Activite(
             date=d,
@@ -355,8 +406,10 @@ async def get_activites(
             a_vote=v["a_vote"],
             a_pris_parole=False,  # pas encore en base
             a_depose_amendement=v["a_depose_amendement"],
+            a_commission=v["a_commission"],
             votes=v["votes"],
             amendements=v["amendements"],
+            commissions=v["commissions"],
         )
         for d, v in sorted(data.items())
     ]

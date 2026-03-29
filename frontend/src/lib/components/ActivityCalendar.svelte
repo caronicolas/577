@@ -12,14 +12,23 @@
     url_an: string | null;
   }
 
+  interface CommissionJour {
+    reunion_id: string;
+    titre: string | null;
+    heure_debut: string | null;
+    organe_libelle: string | null;
+  }
+
   interface Activite {
     date: string; // YYYY-MM-DD
     present: boolean;
     a_vote: boolean;
     a_pris_parole: boolean;
     a_depose_amendement: boolean;
+    a_commission: boolean;
     votes: VoteJour[];
     amendements: AmendementJour[];
+    commissions: CommissionJour[];
   }
 
   interface Props {
@@ -69,6 +78,7 @@
     if (!a.present) return 'var(--color-absent)';
     if (a.a_vote && (a.a_pris_parole || a.a_depose_amendement)) return 'var(--color-vote-actif)';
     if (a.a_vote) return 'var(--color-vote)';
+    if (a.a_commission) return 'var(--color-commission)';
     return 'var(--color-present)';
   }
 
@@ -254,6 +264,15 @@
           {/if}
         {/each}
       {/if}
+      {#if a.commissions.length > 0}
+        <div class="tooltip-section">Commissions</div>
+        {#each a.commissions as c}
+          <div class="tooltip-line">
+            {#if c.heure_debut}<span class="commission-heure">{c.heure_debut}</span>{/if}
+            {c.organe_libelle ?? c.titre ?? 'Commission'}
+          </div>
+        {/each}
+      {/if}
     {/if}
   </div>
 {/if}
@@ -263,6 +282,7 @@
   <span class="swatch" style="background: var(--color-present)"></span> Présent
   <span class="swatch" style="background: var(--color-vote)"></span> A voté
   <span class="swatch" style="background: var(--color-vote-actif)"></span> A voté + intervention
+  <span class="swatch" style="background: var(--color-commission)"></span> Commission
 </div>
 
 <style>
@@ -368,4 +388,11 @@
   .position--contre     { background: #fed7d7; color: #9b2c2c; }
   .position--abstention { background: #e2e8f0; color: #4a5568; }
   .position--nonvotant  { background: #e2e8f0; color: #718096; }
+
+  .commission-heure {
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    color: var(--color-commission);
+    flex-shrink: 0;
+  }
 </style>

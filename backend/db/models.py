@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -59,6 +59,83 @@ class Depute(Base):
     groupe: Mapped[Optional["Organe"]] = relationship(back_populates="deputes")
     votes: Mapped[list["VoteDepute"]] = relationship(back_populates="depute")
     amendements: Mapped[list["Amendement"]] = relationship(back_populates="depute")
+    presences_commission: Mapped[list["PresenceCommission"]] = relationship(
+        back_populates="depute"
+    )
+
+
+class Seance(Base):
+    """Séance plénière (AN ou Sénat)."""
+
+    __tablename__ = "seances"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)  # uid AN
+    date: Mapped[date] = mapped_column(Date, index=True)
+    titre: Mapped[Optional[str]] = mapped_column(Text)
+    # ex: SéancePublique, SéanceOrdre
+    type_seance: Mapped[Optional[str]] = mapped_column(String(50))
+    is_senat: Mapped[bool] = mapped_column(Boolean, default=False)
+    legislature: Mapped[int] = mapped_column(Integer, default=17)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    points_odj: Mapped[list["PointODJ"]] = relationship(back_populates="seance")
+    scrutins: Mapped[list["Scrutin"]] = relationship(back_populates="seance")
+
+
+class PointODJ(Base):
+    """Point à l'ordre du jour d'une séance."""
+
+    __tablename__ = "points_odj"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    seance_id: Mapped[str] = mapped_column(ForeignKey("seances.id"), index=True)
+    ordre: Mapped[Optional[int]] = mapped_column(Integer)
+    titre: Mapped[Optional[str]] = mapped_column(Text)
+
+    seance: Mapped["Seance"] = relationship(back_populates="points_odj")
+
+
+class ReunionCommission(Base):
+    """Réunion de commission (AN ou Sénat)."""
+
+    __tablename__ = "reunions_commission"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)  # uid AN
+    date: Mapped[date] = mapped_column(Date, index=True)
+    heure_debut: Mapped[Optional[str]] = mapped_column(String(10))
+    heure_fin: Mapped[Optional[str]] = mapped_column(String(10))
+    titre: Mapped[Optional[str]] = mapped_column(Text)
+    organe_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("organes.id"), nullable=True
+    )
+    organe_libelle: Mapped[Optional[str]] = mapped_column(String(300))
+    is_senat: Mapped[bool] = mapped_column(Boolean, default=False)
+    legislature: Mapped[int] = mapped_column(Integer, default=17)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    presences: Mapped[list["PresenceCommission"]] = relationship(
+        back_populates="reunion"
+    )
+
+
+class PresenceCommission(Base):
+    """Présence d'un député à une réunion de commission."""
+
+    __tablename__ = "presences_commission"
+
+    reunion_id: Mapped[str] = mapped_column(
+        ForeignKey("reunions_commission.id"), primary_key=True
+    )
+    depute_id: Mapped[str] = mapped_column(
+        ForeignKey("deputes.id"), primary_key=True, index=True
+    )
+
+    reunion: Mapped["ReunionCommission"] = relationship(back_populates="presences")
+    depute: Mapped["Depute"] = relationship(back_populates="presences_commission")
 
 
 class Scrutin(Base):
@@ -77,12 +154,16 @@ class Scrutin(Base):
     nombre_contres: Mapped[Optional[int]] = mapped_column(Integer)
     nombre_abstentions: Mapped[Optional[int]] = mapped_column(Integer)
     url_an: Mapped[Optional[str]] = mapped_column(String(500))
+    seance_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("seances.id"), nullable=True, index=True
+    )
     legislature: Mapped[int] = mapped_column(Integer, default=17)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     votes: Mapped[list["VoteDepute"]] = relationship(back_populates="scrutin")
+    seance: Mapped[Optional["Seance"]] = relationship(back_populates="scrutins")
 
 
 class VoteDepute(Base):

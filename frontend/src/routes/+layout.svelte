@@ -7,6 +7,7 @@
     { href: '/', label: 'Hémicycle' },
     { href: '/deputes', label: 'Députés' },
     { href: '/votes', label: 'Votes' },
+    { href: '/agenda', label: 'Agenda' },
   ];
 </script>
 

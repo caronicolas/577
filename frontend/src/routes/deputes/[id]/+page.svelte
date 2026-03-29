@@ -18,6 +18,14 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
 
+  const commissions = $derived(
+    activites
+      .flatMap((a: any) =>
+        (a.commissions ?? []).map((c: any) => ({ ...c, date: a.date }))
+      )
+      .sort((a: any, b: any) => b.date.localeCompare(a.date))
+  );
+
   $effect(() => {
     loading = true;
     error = null;
@@ -155,6 +163,23 @@
     <h2>Activité — 17<sup>e</sup> législature</h2>
     <ActivityCalendar {activites} dateDebut="2024-06-18" dateFin={new Date().toISOString().slice(0, 10)} />
   </section>
+
+  {#if commissions.length > 0}
+    <section class="section">
+      <h2>Commissions ({commissions.length})</h2>
+      <ul class="list">
+        {#each commissions as c (c.reunion_id)}
+          <li class="list-item commission-item">
+            <span class="commission-date">{c.date}</span>
+            {#if c.heure_debut}
+              <span class="commission-heure">{c.heure_debut}</span>
+            {/if}
+            <span class="commission-libelle">{c.organe_libelle ?? c.titre ?? 'Commission'}</span>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
 
   <section class="section">
     <h2>Votes ({votes.length})</h2>
@@ -385,4 +410,32 @@
   .vote-pos[data-pos="Abstention"] { color: var(--color-text-muted); }
 
   .muted { color: var(--color-text-muted); }
+
+  .commission-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.875rem;
+  }
+
+  .commission-date {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    width: 80px;
+  }
+
+  .commission-heure {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-commission);
+    flex-shrink: 0;
+  }
+
+  .commission-libelle {
+    color: var(--color-text-muted);
+  }
 </style>
