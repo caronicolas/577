@@ -267,12 +267,14 @@ def _get_conn_params() -> dict:
     else:
         user, password = userinfo, ""
 
-    # host:port/dbname
+    # host:port/dbname?params
     slash = hostinfo.find("/")
     if slash >= 0:
-        hostport, dbname = hostinfo[:slash], hostinfo[slash + 1 :]
+        hostport, dbname_raw = hostinfo[:slash], hostinfo[slash + 1 :]
     else:
-        hostport, dbname = hostinfo, ""
+        hostport, dbname_raw = hostinfo, ""
+    # Strip query string from dbname (e.g. "an577?ssl=require" → "an577")
+    dbname = dbname_raw.split("?", 1)[0]
 
     # host:port
     if ":" in hostport:
