@@ -21,7 +21,7 @@ def upgrade() -> None:
     op.create_table(
         "seances",
         sa.Column("id", sa.String(100), primary_key=True),
-        sa.Column("date", sa.Date(), nullable=False, index=True),
+        sa.Column("date", sa.Date(), nullable=False),
         sa.Column("titre", sa.Text(), nullable=True),
         sa.Column("type_seance", sa.String(50), nullable=True),
         sa.Column("is_senat", sa.Boolean(), nullable=False, server_default="false"),
@@ -45,7 +45,6 @@ def upgrade() -> None:
             sa.String(100),
             sa.ForeignKey("seances.id"),
             nullable=False,
-            index=True,
         ),
         sa.Column("ordre", sa.Integer(), nullable=True),
         sa.Column("titre", sa.Text(), nullable=True),
@@ -55,7 +54,7 @@ def upgrade() -> None:
     op.create_table(
         "reunions_commission",
         sa.Column("id", sa.String(100), primary_key=True),
-        sa.Column("date", sa.Date(), nullable=False, index=True),
+        sa.Column("date", sa.Date(), nullable=False),
         sa.Column("heure_debut", sa.String(10), nullable=True),
         sa.Column("heure_fin", sa.String(10), nullable=True),
         sa.Column("titre", sa.Text(), nullable=True),
@@ -92,7 +91,6 @@ def upgrade() -> None:
             sa.ForeignKey("deputes.id"),
             primary_key=True,
             nullable=False,
-            index=True,
         ),
     )
     op.create_index(
@@ -106,7 +104,6 @@ def upgrade() -> None:
             sa.String(100),
             sa.ForeignKey("seances.id"),
             nullable=True,
-            index=True,
         ),
     )
     op.create_index("ix_scrutins_seance_id", "scrutins", ["seance_id"])
