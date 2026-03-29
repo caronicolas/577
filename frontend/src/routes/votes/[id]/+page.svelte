@@ -110,6 +110,12 @@
         Document source officiel →
       </a>
     {/if}
+    {#if scrutin.expose_sommaire}
+      <div class="expose">
+        <p class="expose-label">Exposé sommaire</p>
+        <p class="expose-text">{scrutin.expose_sommaire}</p>
+      </div>
+    {/if}
   </div>
 
   <div class="stats">
@@ -189,6 +195,30 @@
 
 <style>
   .header { margin-bottom: 1.5rem; }
+
+  .expose {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    max-width: 720px;
+  }
+
+  .expose-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .expose-text {
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-text);
+  }
 
   .meta {
     font-size: 0.85rem;

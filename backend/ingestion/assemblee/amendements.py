@@ -47,6 +47,7 @@ class AmendementNormalise(BaseModel):
     texte_legislature: Optional[str] = None
     date_depot: Optional[date] = None
     sort: Optional[str] = None
+    expose_sommaire: Optional[str] = None
     url_an: Optional[str] = None
     depute_id: Optional[str] = None
     legislature: int = LEGISLATURE
@@ -112,6 +113,8 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
             if ref and not _nil(ref):
                 depute_id = ref
 
+        expose_sommaire = _strip_html(amend.get("corps", {}).get("exposeSommaire"))
+
         return AmendementNormalise(
             id=uid,
             numero=numero,
@@ -119,6 +122,7 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
             texte_legislature=texte_legislature,
             date_depot=date_depot,
             sort=sort,
+            expose_sommaire=expose_sommaire,
             url_an=url_an,
             depute_id=depute_id,
         )
@@ -195,10 +199,10 @@ _UPSERT = text(
     """
     INSERT INTO amendements (
         id, numero, titre, texte_legislature, date_depot, sort,
-        url_an, depute_id, legislature, updated_at
+        expose_sommaire, url_an, depute_id, legislature, updated_at
     ) VALUES (
         :id, :numero, :titre, :texte_legislature, :date_depot, :sort,
-        :url_an, :depute_id, :legislature, now()
+        :expose_sommaire, :url_an, :depute_id, :legislature, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         numero            = EXCLUDED.numero,
@@ -206,6 +210,7 @@ _UPSERT = text(
         texte_legislature = EXCLUDED.texte_legislature,
         date_depot        = EXCLUDED.date_depot,
         sort              = EXCLUDED.sort,
+        expose_sommaire   = EXCLUDED.expose_sommaire,
         url_an            = EXCLUDED.url_an,
         depute_id         = EXCLUDED.depute_id,
         updated_at        = now()

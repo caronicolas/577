@@ -154,6 +154,7 @@ class Scrutin(Base):
     nombre_contres: Mapped[Optional[int]] = mapped_column(Integer)
     nombre_abstentions: Mapped[Optional[int]] = mapped_column(Integer)
     url_an: Mapped[Optional[str]] = mapped_column(String(500))
+    ref_amendement: Mapped[Optional[str]] = mapped_column(String(50))
     seance_id: Mapped[Optional[str]] = mapped_column(
         ForeignKey("seances.id"), nullable=True, index=True
     )
@@ -192,6 +193,7 @@ class Amendement(Base):
     texte_legislature: Mapped[Optional[str]] = mapped_column(String(50))
     date_depot: Mapped[Optional[date]] = mapped_column(Date, index=True)
     sort: Mapped[Optional[str]] = mapped_column(String(50))
+    expose_sommaire: Mapped[Optional[str]] = mapped_column(Text)
     url_an: Mapped[Optional[str]] = mapped_column(String(500))
     depute_id: Mapped[Optional[str]] = mapped_column(ForeignKey("deputes.id"))
     legislature: Mapped[int] = mapped_column(Integer, default=17)

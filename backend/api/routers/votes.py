@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Depute, Organe, Scrutin, VoteDepute
+from db.models import Amendement, Depute, Organe, Scrutin, VoteDepute
 from db.session import get_session
 
 router = APIRouter()
@@ -57,6 +57,7 @@ class ScrutinDetail(BaseModel):
     nombre_contres: Optional[int]
     nombre_abstentions: Optional[int]
     url_an: Optional[str]
+    expose_sommaire: Optional[str] = None
     legislature: int
     votes: list[VoteDeputeItem]
 
@@ -158,11 +159,16 @@ async def get_scrutin(
     scrutin_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> ScrutinDetail:
-    scrutin = (
-        await session.execute(select(Scrutin).where(Scrutin.id == scrutin_id))
-    ).scalar_one_or_none()
-    if scrutin is None:
+    row = (
+        await session.execute(
+            select(Scrutin, Amendement.expose_sommaire)
+            .outerjoin(Amendement, Scrutin.ref_amendement == Amendement.id)
+            .where(Scrutin.id == scrutin_id)
+        )
+    ).one_or_none()
+    if row is None:
         raise HTTPException(status_code=404, detail="Scrutin introuvable")
+    scrutin, expose_sommaire = row
 
     # Votes avec infos député et groupe en une seule requête (pas de N+1)
     votes_stmt = (
@@ -186,6 +192,7 @@ async def get_scrutin(
         nombre_contres=scrutin.nombre_contres,
         nombre_abstentions=scrutin.nombre_abstentions,
         url_an=scrutin.url_an,
+        expose_sommaire=expose_sommaire,
         legislature=scrutin.legislature,
         votes=[
             VoteDeputeItem(

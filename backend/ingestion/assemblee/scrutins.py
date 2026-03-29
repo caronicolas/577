@@ -51,6 +51,7 @@ class ScrutinNormalise:
     nombre_contres: Optional[int] = None
     nombre_abstentions: Optional[int] = None
     url_an: Optional[str] = None
+    ref_amendement: Optional[str] = None
     legislature: int = LEGISLATURE
 
 
@@ -146,6 +147,11 @@ def _normalise_scrutin(
             f"https://www.assemblee-nationale.fr/dyn/{LEGISLATURE}/scrutins/{numero}"
         )
 
+        objet = scrutin.get("objet") or {}
+        ref_amendement = (objet.get("amendement") or {}).get("refAmendement") or None
+        if isinstance(ref_amendement, dict):  # xsi:nil node
+            ref_amendement = None
+
         s = ScrutinNormalise(
             id=uid,
             numero=numero,
@@ -158,6 +164,7 @@ def _normalise_scrutin(
             nombre_contres=_int(decompte.get("contre")),
             nombre_abstentions=_int(decompte.get("abstentions")),
             url_an=url_an,
+            ref_amendement=ref_amendement,
         )
 
         votes = _extract_votes(uid, scrutin.get("ventilationVotes", {}))
@@ -291,11 +298,11 @@ _UPSERT_SCRUTIN = """
     INSERT INTO scrutins (
         id, numero, titre, date_seance, type_vote, sort,
         nombre_votants, nombre_pours, nombre_contres, nombre_abstentions,
-        url_an, legislature, updated_at
+        url_an, ref_amendement, legislature, updated_at
     ) VALUES (
         %(id)s, %(numero)s, %(titre)s, %(date_seance)s, %(type_vote)s, %(sort)s,
         %(nombre_votants)s, %(nombre_pours)s, %(nombre_contres)s,
-        %(nombre_abstentions)s, %(url_an)s, %(legislature)s, now()
+        %(nombre_abstentions)s, %(url_an)s, %(ref_amendement)s, %(legislature)s, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         titre              = EXCLUDED.titre,
@@ -306,6 +313,7 @@ _UPSERT_SCRUTIN = """
         nombre_contres     = EXCLUDED.nombre_contres,
         nombre_abstentions = EXCLUDED.nombre_abstentions,
         url_an             = EXCLUDED.url_an,
+        ref_amendement     = EXCLUDED.ref_amendement,
         updated_at         = now()
 """
 
@@ -333,6 +341,7 @@ async def persist_all(
                     "nombre_contres": s.nombre_contres,
                     "nombre_abstentions": s.nombre_abstentions,
                     "url_an": s.url_an,
+                    "ref_amendement": s.ref_amendement,
                     "legislature": s.legislature,
                 },
             )
