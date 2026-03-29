@@ -27,6 +27,8 @@ jobs:
 
       - name: Type check
         run: npm run check
+        env:
+          PUBLIC_API_BASE_URL: ${{ secrets.API_URL }}
 
       - name: Build
         run: npm run build
