@@ -69,3 +69,27 @@ resource "scaleway_function_cron" "deputes_weekly" {
   schedule    = "0 5 * * 1" # Lundi 05:00 UTC
   args        = jsonencode({ type = "deputes" })
 }
+
+resource "scaleway_function" "ingest_agenda" {
+  name         = "ingest-agenda"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "agenda.handle"
+  privacy      = "private"
+  timeout      = 900
+  max_scale    = 1
+  memory_limit = 512
+  zip_file     = "functions/agenda.zip"
+  zip_hash     = try(filesha256("functions/agenda.zip"), "")
+  deploy       = true
+
+  secret_environment_variables = {
+    DATABASE_URL = var.database_url
+  }
+}
+
+resource "scaleway_function_cron" "agenda_daily" {
+  function_id = scaleway_function.ingest_agenda.id
+  schedule    = "0 4 * * *" # 04:00 UTC chaque jour
+  args        = jsonencode({ type = "agenda" })
+}
