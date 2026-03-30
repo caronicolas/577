@@ -9,6 +9,18 @@
     { href: '/votes', label: 'Votes' },
     { href: '/agenda', label: 'Agenda' },
   ];
+
+  let menuOpen = $state(false);
+
+  function closeMenu() {
+    menuOpen = false;
+  }
+
+  $effect(() => {
+    // Ferme le menu à chaque changement de page
+    $page.url.pathname;
+    menuOpen = false;
+  });
 </script>
 
 <svelte:head>
@@ -36,7 +48,9 @@
       </svg>
       les 577
     </a>
-    <ul>
+
+    <!-- Navigation desktop -->
+    <ul class="nav-desktop">
       {#each navLinks as link}
         <li>
           <a href={link.href} class:active={$page.url.pathname === link.href}>
@@ -45,7 +59,34 @@
         </li>
       {/each}
     </ul>
+
+    <!-- Burger mobile -->
+    <button
+      class="burger"
+      aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+      aria-expanded={menuOpen}
+      onclick={() => (menuOpen = !menuOpen)}
+    >
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </button>
   </nav>
+
+  <!-- Menu mobile -->
+  {#if menuOpen}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div class="overlay" onclick={closeMenu}></div>
+    <ul class="nav-mobile">
+      {#each navLinks as link}
+        <li>
+          <a href={link.href} class:active={$page.url.pathname === link.href} onclick={closeMenu}>
+            {link.label}
+          </a>
+        </li>
+      {/each}
+    </ul>
+  {/if}
 </header>
 
 <main class="container">
@@ -103,13 +144,14 @@
     flex-shrink: 0;
   }
 
-  ul {
+  /* Desktop nav */
+  .nav-desktop {
     display: flex;
     gap: 0.25rem;
     list-style: none;
   }
 
-  ul a {
+  .nav-desktop a {
     display: block;
     padding: 0.375rem 0.75rem;
     border-radius: var(--radius-sm);
@@ -118,11 +160,82 @@
     transition: background 0.15s, color 0.15s;
   }
 
-  ul a:hover,
-  ul a.active {
+  .nav-desktop a:hover,
+  .nav-desktop a.active {
     background: var(--color-bg);
     color: var(--color-text);
     text-decoration: none;
+  }
+
+  /* Burger button */
+  .burger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-left: auto;
+    border-radius: var(--radius-sm);
+  }
+
+  .burger:hover {
+    background: var(--color-border);
+  }
+
+  .bar {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--color-text);
+    border-radius: 2px;
+    transition: opacity 0.15s;
+  }
+
+  /* Mobile dropdown */
+  .overlay {
+    position: fixed;
+    inset: 56px 0 0 0;
+    z-index: 99;
+  }
+
+  .nav-mobile {
+    position: absolute;
+    top: 56px;
+    right: 1rem;
+    z-index: 200;
+    list-style: none;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: 0.5rem;
+    min-width: 160px;
+  }
+
+  .nav-mobile a {
+    display: block;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .nav-mobile a:hover,
+  .nav-mobile a.active {
+    background: var(--color-bg);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  @media (max-width: 600px) {
+    .nav-desktop { display: none; }
+    .burger { display: flex; }
   }
 
   main {
