@@ -57,6 +57,7 @@
 {:else if error}
   <div class="error">{error}</div>
 {:else}
+  <Hemicycle mode="groupe" data={deputes} {selectedGroupe} />
   <div class="legend">
     {#each groupes as g}
       <button
@@ -73,7 +74,6 @@
       </button>
     {/each}
   </div>
-  <Hemicycle mode="groupe" data={deputes} {selectedGroupe} />
 {/if}
 
 <style>
@@ -102,7 +102,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem 0.75rem;
-    margin-bottom: 1rem;
+    margin-top: 1rem;
     max-width: 900px;
     margin-inline: auto;
   }
