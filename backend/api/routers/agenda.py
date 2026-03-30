@@ -69,7 +69,7 @@ async def get_agenda(
     """
     today = date.today()
     if date_debut is None:
-        date_debut = today - timedelta(days=7)
+        date_debut = today
     if date_fin is None:
         date_fin = date_debut + timedelta(days=jours)
 
