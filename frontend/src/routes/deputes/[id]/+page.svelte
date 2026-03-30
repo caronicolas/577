@@ -26,6 +26,15 @@
       .sort((a: any, b: any) => b.date.localeCompare(a.date))
   );
 
+  let expandedCommissions = $state(new Set<string>());
+
+  function toggleCommission(id: string) {
+    const next = new Set(expandedCommissions);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    expandedCommissions = next;
+  }
+
   $effect(() => {
     loading = true;
     error = null;
@@ -172,12 +181,20 @@
       {:else}
         <ul class="list">
           {#each commissions as c (c.reunion_id)}
-            <li class="list-item commission-item">
-              <span class="commission-date">{c.date}</span>
-              {#if c.heure_debut}
-                <span class="commission-heure">{c.heure_debut}</span>
+            {@const open = expandedCommissions.has(c.reunion_id)}
+            <li class="commission-item">
+              <button class="commission-header" onclick={() => toggleCommission(c.reunion_id)}>
+                <svg class="chevron" class:open viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+                <span class="commission-date">{c.date}</span>
+                {#if c.heure_debut}
+                  <span class="commission-heure">{c.heure_debut}</span>
+                {/if}
+              </button>
+              {#if open}
+                <p class="commission-libelle">{c.organe_libelle ?? c.titre ?? 'Commission'}</p>
               {/if}
-              <span class="commission-libelle">{c.organe_libelle ?? c.titre ?? 'Commission'}</span>
             </li>
           {/each}
         </ul>
@@ -193,7 +210,6 @@
           {#each votes as v (v.id)}
             <li class="list-item">
               <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
-                <span class="vote-date">{v.date ? v.date.slice(0, 10) : '—'}</span>
                 <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
                 {#if v.position}
                   <span class="vote-pos" data-pos={v.position}>{v.position}</span>
@@ -402,7 +418,7 @@
 
   .vote-link {
     display: flex;
-    gap: 1rem;
+    gap: 0.5rem;
     align-items: baseline;
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--color-border);
@@ -412,14 +428,6 @@
   }
 
   .vote-link:hover { text-decoration: none; background: var(--color-bg); }
-
-  .vote-date {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-    width: 80px;
-  }
 
   .vote-titre { flex: 1; }
 
@@ -431,20 +439,41 @@
   .muted { color: var(--color-text-muted); }
 
   .commission-item {
-    display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
-    padding: 0.4rem 0;
     border-bottom: 1px solid var(--color-border);
     font-size: 0.875rem;
   }
+
+  .commission-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.4rem 0;
+    cursor: pointer;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    text-align: left;
+  }
+
+  .commission-header:hover { color: var(--color-text); }
+
+  .chevron {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+    transition: transform 0.15s;
+  }
+
+  .chevron.open { transform: rotate(90deg); }
 
   .commission-date {
     font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--color-text-muted);
     flex-shrink: 0;
-    width: 80px;
   }
 
   .commission-heure {
@@ -456,5 +485,8 @@
 
   .commission-libelle {
     color: var(--color-text-muted);
+    font-size: 0.875rem;
+    padding: 0.25rem 0 0.4rem 1.35rem;
+    margin: 0;
   }
 </style>
