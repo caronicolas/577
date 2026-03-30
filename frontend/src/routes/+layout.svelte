@@ -246,7 +246,7 @@
 
   footer {
     border-top: 1px solid var(--color-border);
-    padding: 1.5rem 0;
+    padding: 1.5rem 0 1.5rem 15px;
     font-size: 0.8rem;
     color: var(--color-text-muted);
     display: flex;
