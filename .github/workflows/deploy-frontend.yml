@@ -28,12 +28,12 @@ jobs:
       - name: Type check
         run: npm run check
         env:
-          PUBLIC_API_BASE_URL: ${{ secrets.API_URL }}
+          PUBLIC_API_BASE_URL: https://an577apimp6bapdb-api.functions.fnc.fr-par.scw.cloud
 
       - name: Build
         run: npm run build
         env:
-          PUBLIC_API_BASE_URL: ${{ secrets.API_URL }}
+          PUBLIC_API_BASE_URL: https://an577apimp6bapdb-api.functions.fnc.fr-par.scw.cloud
 
       - name: Deploy to Scaleway Object Storage
         uses: jakejarvis/s3-sync-action@v0.5.1
