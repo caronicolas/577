@@ -221,9 +221,8 @@
   .info-tooltip {
     display: none;
     position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
+    top: 0;
+    left: calc(100% + 8px);
     width: 280px;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
