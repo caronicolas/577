@@ -29,7 +29,6 @@ app = FastAPI(
     description="API publique — données open data AN 17e législature",
     version="0.1.0",
     lifespan=lifespan,
-    debug=True,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
