@@ -410,7 +410,7 @@ async def run() -> None:
         "Parsed: %d séances, %d réunions commission", len(seances), len(reunions)
     )
 
-    async with await psycopg.AsyncConnection.connect(db_url, autocommit=False) as conn:
+    async with await psycopg.AsyncConnection.connect(db_url, autocommit=True) as conn:
         # Charger IDs connus pour éviter FK violations
         depute_ids = {
             row[0] async for row in await conn.execute("SELECT id FROM deputes")
@@ -423,9 +423,17 @@ async def run() -> None:
             await upsert_seances(conn, seances)
             logger.info("Séances insérées/mises à jour : %d", len(seances))
 
-        async with conn.transaction():
-            await upsert_reunions(conn, reunions, depute_ids, organe_ids)
-            logger.info("Réunions commission insérées/mises à jour : %d", len(reunions))
+        BATCH = 200
+        for i in range(0, len(reunions), BATCH):
+            batch = reunions[i : i + BATCH]
+            async with conn.transaction():
+                await upsert_reunions(conn, batch, depute_ids, organe_ids)
+            logger.info(
+                "Réunions insérées : %d/%d",
+                min(i + BATCH, len(reunions)),
+                len(reunions),
+            )
+        logger.info("Réunions commission insérées/mises à jour : %d", len(reunions))
 
     logger.info("Ingestion agenda terminée.")
 
