@@ -164,70 +164,74 @@
     <ActivityCalendar {activites} dateDebut="2024-06-18" dateFin={new Date().toISOString().slice(0, 10)} />
   </section>
 
-  {#if commissions.length > 0}
-    <section class="section">
+  <div class="columns">
+    <section class="col">
       <h2>Commissions ({commissions.length})</h2>
-      <ul class="list">
-        {#each commissions as c (c.reunion_id)}
-          <li class="list-item commission-item">
-            <span class="commission-date">{c.date}</span>
-            {#if c.heure_debut}
-              <span class="commission-heure">{c.heure_debut}</span>
-            {/if}
-            <span class="commission-libelle">{c.organe_libelle ?? c.titre ?? 'Commission'}</span>
-          </li>
-        {/each}
-      </ul>
+      {#if commissions.length === 0}
+        <p class="muted">Aucune commission enregistrée.</p>
+      {:else}
+        <ul class="list">
+          {#each commissions as c (c.reunion_id)}
+            <li class="list-item commission-item">
+              <span class="commission-date">{c.date}</span>
+              {#if c.heure_debut}
+                <span class="commission-heure">{c.heure_debut}</span>
+              {/if}
+              <span class="commission-libelle">{c.organe_libelle ?? c.titre ?? 'Commission'}</span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </section>
-  {/if}
 
-  <section class="section">
-    <h2>Votes ({votes.length})</h2>
-    {#if votes.length === 0}
-      <p class="muted">Aucun vote enregistré.</p>
-    {:else}
-      <ul class="list">
-        {#each votes as v (v.id)}
-          <li class="list-item">
-            <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
-              <span class="vote-date">{v.date ? v.date.slice(0, 10) : '—'}</span>
-              <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
-              {#if v.position}
-                <span class="vote-pos" data-pos={v.position}>{v.position}</span>
-              {/if}
-            </a>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+    <section class="col">
+      <h2>Votes ({votes.length})</h2>
+      {#if votes.length === 0}
+        <p class="muted">Aucun vote enregistré.</p>
+      {:else}
+        <ul class="list">
+          {#each votes as v (v.id)}
+            <li class="list-item">
+              <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
+                <span class="vote-date">{v.date ? v.date.slice(0, 10) : '—'}</span>
+                <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
+                {#if v.position}
+                  <span class="vote-pos" data-pos={v.position}>{v.position}</span>
+                {/if}
+              </a>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </section>
 
-  <section class="section">
-    <h2>Amendements ({amendements.length})</h2>
-    {#if amendements.length === 0}
-      <p class="muted">Aucun amendement enregistré.</p>
-    {:else}
-      <ul class="list">
-        {#each amendements as a (a.id)}
-          <li class="list-item">
-            <a href={a.url_an} target="_blank" rel="noopener noreferrer" class="amend-link">
-              <span class="amend-num">N°{a.numero ?? '—'}</span>
-              {#if texteNum(a.texte_legislature)}
-                <span class="amend-texte">Texte {texteNum(a.texte_legislature)}</span>
-              {/if}
-              <span class="amend-titre">{a.titre ?? '—'}</span>
-              {#if a.date_depot}
-                <span class="amend-date">{a.date_depot}</span>
-              {/if}
-              {#if a.sort}
-                <span class="amend-sort" data-sort={a.sort}>{a.sort}</span>
-              {/if}
-            </a>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+    <section class="col">
+      <h2>Amendements ({amendements.length})</h2>
+      {#if amendements.length === 0}
+        <p class="muted">Aucun amendement enregistré.</p>
+      {:else}
+        <ul class="list">
+          {#each amendements as a (a.id)}
+            <li class="list-item">
+              <a href={a.url_an} target="_blank" rel="noopener noreferrer" class="amend-link">
+                <span class="amend-num">N°{a.numero ?? '—'}</span>
+                {#if texteNum(a.texte_legislature)}
+                  <span class="amend-texte">Texte {texteNum(a.texte_legislature)}</span>
+                {/if}
+                <span class="amend-titre">{a.titre ?? '—'}</span>
+                {#if a.date_depot}
+                  <span class="amend-date">{a.date_depot}</span>
+                {/if}
+                {#if a.sort}
+                  <span class="amend-sort" data-sort={a.sort}>{a.sort}</span>
+                {/if}
+              </a>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </section>
+  </div>
 {/if}
 
 <style>
@@ -318,6 +322,21 @@
   }
 
   .section { margin-bottom: 2.5rem; }
+
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .columns {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .col { min-width: 0; }
 
   h2 {
     font-size: 1.1rem;
