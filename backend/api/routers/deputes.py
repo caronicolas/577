@@ -72,6 +72,7 @@ class CommissionJour(BaseModel):
     titre: Optional[str]
     heure_debut: Optional[str]
     organe_libelle: Optional[str]
+    organe_id: Optional[str]
 
 
 class Activite(BaseModel):
@@ -343,6 +344,7 @@ async def get_activites(
             ReunionCommission.titre,
             ReunionCommission.heure_debut,
             ReunionCommission.organe_libelle,
+            ReunionCommission.organe_id,
         )
         .join(
             PresenceCommission,
@@ -387,7 +389,7 @@ async def get_activites(
             AmendementJour(id=amend_id, numero=numero, titre=titre, url_an=url_an)
         )
 
-    for reunion_id, d, titre, heure_debut, organe_libelle in commission_rows:
+    for reunion_id, d, titre, heure_debut, organe_libelle, organe_id in commission_rows:
         data[d]["a_commission"] = True
         data[d]["present"] = True
         data[d]["commissions"].append(
@@ -396,6 +398,7 @@ async def get_activites(
                 titre=titre,
                 heure_debut=heure_debut,
                 organe_libelle=organe_libelle,
+                organe_id=organe_id,
             )
         )
 

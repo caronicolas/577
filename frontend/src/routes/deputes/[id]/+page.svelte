@@ -193,7 +193,17 @@
                 {/if}
               </button>
               {#if open}
-                <p class="commission-libelle">{c.organe_libelle ?? c.titre ?? 'Commission'}</p>
+                <p class="commission-libelle">
+                  {#if c.organe_id}
+                    <a
+                      href="https://www.assemblee-nationale.fr/dyn/17/organes/{c.organe_id}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >{c.organe_libelle ?? c.titre ?? 'Commission'}</a>
+                  {:else}
+                    {c.organe_libelle ?? c.titre ?? 'Commission'}
+                  {/if}
+                </p>
               {/if}
             </li>
           {/each}
