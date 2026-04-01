@@ -113,7 +113,9 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
             if ref and not _nil(ref):
                 depute_id = ref
 
-        expose_sommaire = _strip_html(amend.get("corps", {}).get("exposeSommaire"))
+        corps = amend.get("corps") or {}
+        contenu_auteur = corps.get("contenuAuteur") or {}
+        expose_sommaire = _strip_html(contenu_auteur.get("exposeSommaire"))
 
         return AmendementNormalise(
             id=uid,

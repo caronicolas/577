@@ -155,6 +155,7 @@ class Scrutin(Base):
     nombre_abstentions: Mapped[Optional[int]] = mapped_column(Integer)
     url_an: Mapped[Optional[str]] = mapped_column(String(500))
     ref_amendement: Mapped[Optional[str]] = mapped_column(String(50))
+    objet_libelle: Mapped[Optional[str]] = mapped_column(Text)
     seance_id: Mapped[Optional[str]] = mapped_column(
         ForeignKey("seances.id"), nullable=True, index=True
     )

@@ -45,6 +45,7 @@ build_zip() {
 build_zip "scrutins"
 build_zip "deputes"
 build_zip "agenda"
+build_zip "amendements"
 
 rm -rf "$TMP_DIR"
 echo "Done."

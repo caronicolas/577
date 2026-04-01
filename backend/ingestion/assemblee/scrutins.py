@@ -52,6 +52,7 @@ class ScrutinNormalise:
     nombre_abstentions: Optional[int] = None
     url_an: Optional[str] = None
     ref_amendement: Optional[str] = None
+    objet_libelle: Optional[str] = None
     legislature: int = LEGISLATURE
 
 
@@ -151,6 +152,12 @@ def _normalise_scrutin(
         ref_amendement = (objet.get("amendement") or {}).get("refAmendement") or None
         if isinstance(ref_amendement, dict):  # xsi:nil node
             ref_amendement = None
+        objet_libelle_raw = objet.get("libelle")
+        objet_libelle = (
+            str(objet_libelle_raw).strip()
+            if objet_libelle_raw and not isinstance(objet_libelle_raw, dict)
+            else None
+        )
 
         s = ScrutinNormalise(
             id=uid,
@@ -165,6 +172,7 @@ def _normalise_scrutin(
             nombre_abstentions=_int(decompte.get("abstentions")),
             url_an=url_an,
             ref_amendement=ref_amendement,
+            objet_libelle=objet_libelle,
         )
 
         votes = _extract_votes(uid, scrutin.get("ventilationVotes", {}))
@@ -300,11 +308,12 @@ _UPSERT_SCRUTIN = """
     INSERT INTO scrutins (
         id, numero, titre, date_seance, type_vote, sort,
         nombre_votants, nombre_pours, nombre_contres, nombre_abstentions,
-        url_an, ref_amendement, legislature, updated_at
+        url_an, ref_amendement, objet_libelle, legislature, updated_at
     ) VALUES (
         %(id)s, %(numero)s, %(titre)s, %(date_seance)s, %(type_vote)s, %(sort)s,
         %(nombre_votants)s, %(nombre_pours)s, %(nombre_contres)s,
-        %(nombre_abstentions)s, %(url_an)s, %(ref_amendement)s, %(legislature)s, now()
+        %(nombre_abstentions)s, %(url_an)s, %(ref_amendement)s,
+        %(objet_libelle)s, %(legislature)s, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         titre              = EXCLUDED.titre,
@@ -316,6 +325,7 @@ _UPSERT_SCRUTIN = """
         nombre_abstentions = EXCLUDED.nombre_abstentions,
         url_an             = EXCLUDED.url_an,
         ref_amendement     = EXCLUDED.ref_amendement,
+        objet_libelle      = EXCLUDED.objet_libelle,
         updated_at         = now()
 """
 
@@ -344,6 +354,7 @@ async def persist_all(
                     "nombre_abstentions": s.nombre_abstentions,
                     "url_an": s.url_an,
                     "ref_amendement": s.ref_amendement,
+                    "objet_libelle": s.objet_libelle,
                     "legislature": s.legislature,
                 },
             )
