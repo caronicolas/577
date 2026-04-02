@@ -213,7 +213,7 @@ async def test_activites_ignore_avant_legislature(
 async def test_activites_autre_depute_non_inclus(
     client: AsyncClient, session: AsyncSession, depute: Depute
 ):
-    """Les votes d'un autre député ne remontent pas."""
+    """Les votes d'un autre député ne remontent pas — PA1 apparaît absent ce jour-là."""
     autre = Depute(
         id="PA2", nom="Martin", prenom="Paul", nom_de_famille="Martin", legislature=17
     )
@@ -224,4 +224,10 @@ async def test_activites_autre_depute_non_inclus(
     await _vote(session, "VTANR5L17V1", "PA2", "pour")
 
     r = await client.get("/deputes/PA1/activites")
-    assert r.json() == []
+    data = r.json()
+    # Un scrutin a eu lieu ce jour : PA1 est absent (pas dans votes_deputes)
+    assert len(data) == 1
+    assert data[0]["present"] is False
+    assert data[0]["a_vote"] is False
+    assert data[0]["votes"] == []
+    assert data[0]["nb_scrutins_seance"] == 1
