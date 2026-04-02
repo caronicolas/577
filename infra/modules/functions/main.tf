@@ -93,3 +93,57 @@ resource "scaleway_function_cron" "agenda_daily" {
   schedule    = "0 4 * * *" # 04:00 UTC chaque jour
   args        = jsonencode({ type = "agenda" })
 }
+
+resource "scaleway_function" "ingest_amendements" {
+  name         = "ingest-amendements"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "amendements.handle"
+  privacy      = "private"
+  timeout      = 900
+  max_scale    = 1
+  memory_limit = 1024
+  zip_file     = "functions/amendements.zip"
+  zip_hash     = try(filesha256("functions/amendements.zip"), "")
+  deploy       = true
+
+  environment_variables = {
+    ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
+  }
+
+  secret_environment_variables = {
+    DATABASE_URL = var.database_url
+  }
+}
+
+resource "scaleway_function_cron" "amendements_daily" {
+  function_id = scaleway_function.ingest_amendements.id
+  schedule    = "0 7 * * *" # 07:00 UTC chaque jour
+  args        = jsonencode({ type = "amendements" })
+}
+
+resource "scaleway_function" "post_agenda_bluesky" {
+  name         = "post-agenda-bluesky"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "post_agenda.handle"
+  privacy      = "private"
+  timeout      = 60
+  max_scale    = 1
+  memory_limit = 128
+  zip_file     = "functions/post_agenda.zip"
+  zip_hash     = try(filesha256("functions/post_agenda.zip"), "")
+  deploy       = true
+
+  secret_environment_variables = {
+    DATABASE_URL      = var.database_url
+    BSKY_IDENTIFIER   = var.bsky_identifier
+    BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+}
+
+resource "scaleway_function_cron" "post_agenda_bluesky_daily" {
+  function_id = scaleway_function.post_agenda_bluesky.id
+  schedule    = "0 8 * * *" # 08:00 UTC (10h Paris) chaque jour
+  args        = jsonencode({})
+}

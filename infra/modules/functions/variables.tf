@@ -15,3 +15,13 @@ variable "gouv_api_base_url" {
   type = string
 }
 
+variable "bsky_identifier" {
+  type      = string
+  sensitive = true
+}
+
+variable "bsky_app_password" {
+  type      = string
+  sensitive = true
+}
+

@@ -18,7 +18,8 @@ DEPS="psycopg httpx tenacity"
 mkdir -p "$OUT_DIR"
 
 build_zip() {
-  local name="$1"          # scrutins | deputes
+  local name="$1"     # nom du fichier handler (sans .py)
+  local srcdir="$2"   # répertoire source contenant $name.py
   local workdir="$TMP_DIR/$name"
 
   echo "==> Building $name.zip"
@@ -26,9 +27,7 @@ build_zip() {
   mkdir -p "$workdir"
 
   # Code source de la fonction
-  cp "$INGESTION_DIR/$name.py" "$workdir/$name.py"
-  cp -r "$INGESTION_DIR/../" "$workdir/ingestion"
-  find "$workdir/ingestion" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+  cp "$srcdir/$name.py" "$workdir/$name.py"
 
   # Dépendances pip installées à plat dans le ZIP
   pip3 install $DEPS --target "$workdir" --quiet --disable-pip-version-check
@@ -42,10 +41,13 @@ build_zip() {
   echo "    -> $OUT_DIR/$name.zip ($(du -sh "$OUT_DIR/$name.zip" | cut -f1))"
 }
 
-build_zip "scrutins"
-build_zip "deputes"
-build_zip "agenda"
-build_zip "amendements"
+BLUESKY_DIR="$REPO_ROOT/backend/ingestion/bluesky"
+
+build_zip "scrutins"  "$INGESTION_DIR"
+build_zip "deputes"   "$INGESTION_DIR"
+build_zip "agenda"    "$INGESTION_DIR"
+build_zip "amendements" "$INGESTION_DIR"
+build_zip "post_agenda" "$BLUESKY_DIR"
 
 rm -rf "$TMP_DIR"
 echo "Done."
