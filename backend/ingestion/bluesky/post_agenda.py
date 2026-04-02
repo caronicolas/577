@@ -105,17 +105,14 @@ def _formate_post(today: date, titres: list[str]) -> str:
         "décembre",
     ]
     date_str = f"{today.day} {mois[today.month]} {today.year}"
-    header = f"📅 Assemblée Nationale — {date_str}\n\nEn séance aujourd'hui :\n"
+    header = f"📅 Assemblée Nationale — {date_str}\n\nEn séance :\n"
     footer = "\n\n👉 les577.fr/agenda"
     budget = MAX_POST_LENGTH - len(header) - len(footer)
 
     lignes: list[str] = []
     for titre in titres:
-        # Tronquer les titres trop longs
         ligne = f"• {titre}"
-        if len(ligne) > 80:
-            ligne = ligne[:77] + "…"
-        if budget - len("\n".join(lignes + [ligne])) < 0:
+        if lignes and len("\n".join(lignes + [ligne])) > budget:
             break
         lignes.append(ligne)
 
@@ -143,6 +140,29 @@ async def _post_bluesky(client: httpx.AsyncClient, session: dict, text: str) -> 
     repo = session["did"]
     token = session["accessJwt"]
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    # Bluesky facet : lien cliquable sur "les577.fr/agenda"
+    link_text = "les577.fr/agenda"
+    link_uri = "https://les577.fr/agenda"
+    text_bytes = text.encode("utf-8")
+    start = text_bytes.find(link_text.encode("utf-8"))
+    facets = (
+        [
+            {
+                "$type": "app.bsky.richtext.facet",
+                "index": {
+                    "byteStart": start,
+                    "byteEnd": start + len(link_text.encode("utf-8")),
+                },
+                "features": [
+                    {"$type": "app.bsky.richtext.facet#link", "uri": link_uri}
+                ],
+            }
+        ]
+        if start >= 0
+        else []
+    )
+
     r = await client.post(
         f"{BSKY_PDS}/com.atproto.repo.createRecord",
         headers={"Authorization": f"Bearer {token}"},
@@ -153,6 +173,7 @@ async def _post_bluesky(client: httpx.AsyncClient, session: dict, text: str) -> 
                 "$type": "app.bsky.feed.post",
                 "text": text,
                 "createdAt": now,
+                "facets": facets,
             },
         },
         timeout=15,
