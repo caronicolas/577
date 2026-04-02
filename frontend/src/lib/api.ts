@@ -1,3 +1,3 @@
-// import.meta.env fonctionne avec Vite sans requérir la variable au build
-export const apiBase =
-  (import.meta.env.PUBLIC_API_BASE_URL as string | undefined) ?? '/api';
+import { PUBLIC_API_BASE_URL } from '$env/static/public';
+
+export const apiBase = PUBLIC_API_BASE_URL || '/api';
