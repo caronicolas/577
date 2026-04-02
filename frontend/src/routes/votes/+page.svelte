@@ -2,18 +2,33 @@
   import { apiBase } from '$lib/api';
   const PAGE_SIZE = 50;
 
+  interface Dossier {
+    dossier_ref: string;
+    dossier_libelle: string;
+    nb_scrutins: number;
+  }
+
   let search = $state('');
+  let selectedDossier = $state('');
+  let dossiers = $state<Dossier[]>([]);
   let scrutins = $state<any[]>([]);
   let total = $state(0);
   let loading = $state(true);
   let loadingMore = $state(false);
 
+  // Charger la liste des dossiers une seule fois
+  fetch(`${apiBase}/votes/dossiers`)
+    .then((r) => r.json())
+    .then((data) => { dossiers = data; });
+
   $effect(() => {
     const q = search;
+    const d = selectedDossier;
     loading = true;
     scrutins = [];
     const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
     if (q) params.set('q', q);
+    if (d) params.set('dossier_ref', d);
     fetch(`${apiBase}/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
@@ -30,12 +45,17 @@
       offset: String(scrutins.length),
     });
     if (search) params.set('q', search);
+    if (selectedDossier) params.set('dossier_ref', selectedDossier);
     fetch(`${apiBase}/votes?${params}`)
       .then((r) => r.json())
       .then((data) => {
         scrutins = [...scrutins, ...(data.items ?? [])];
         loadingMore = false;
       });
+  }
+
+  function clearDossier() {
+    selectedDossier = '';
   }
 </script>
 
@@ -48,13 +68,32 @@
 
 <div class="header">
   <h1>Scrutins</h1>
-  <input
-    type="search"
-    placeholder="Rechercher un scrutin…"
-    bind:value={search}
-    class="input"
-  />
+  <div class="filters">
+    <select bind:value={selectedDossier} class="input select-dossier">
+      <option value="">Tous les textes</option>
+      {#each dossiers as d}
+        <option value={d.dossier_ref}>{d.dossier_libelle} ({d.nb_scrutins})</option>
+      {/each}
+    </select>
+    <input
+      type="search"
+      placeholder="Rechercher un scrutin…"
+      bind:value={search}
+      class="input"
+    />
+  </div>
 </div>
+
+{#if selectedDossier}
+  {@const dossier = dossiers.find((d) => d.dossier_ref === selectedDossier)}
+  {#if dossier}
+    <div class="dossier-banner">
+      <span class="dossier-label">Texte filtré :</span>
+      <span class="dossier-titre">{dossier.dossier_libelle}</span>
+      <button class="dossier-clear" onclick={clearDossier} aria-label="Effacer le filtre">✕</button>
+    </div>
+  {/if}
+{/if}
 
 {#if loading}
   <p class="muted">Chargement…</p>
@@ -100,6 +139,13 @@
 
   h1 { font-size: 1.75rem; font-weight: 700; }
 
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
   .input {
     padding: 0.4rem 0.75rem;
     border: 1px solid var(--color-border);
@@ -107,8 +153,51 @@
     font-size: 0.9rem;
     background: var(--color-surface);
     color: var(--color-text);
+  }
+
+  .input[type="search"] {
     min-width: 280px;
   }
+
+  .select-dossier {
+    max-width: 320px;
+    cursor: pointer;
+  }
+
+  .dossier-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .dossier-label {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+
+  .dossier-titre {
+    color: var(--color-text);
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .dossier-clear {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0 0.2rem;
+    flex-shrink: 0;
+  }
+
+  .dossier-clear:hover { color: var(--color-text); }
 
   .count {
     font-size: 0.85rem;
