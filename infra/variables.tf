@@ -50,3 +50,17 @@ variable "gouv_api_base_url" {
   type        = string
   default     = "https://www.data.gouv.fr/api/1"
 }
+
+variable "bsky_identifier" {
+  description = "Handle ou DID du compte Bluesky (ex : les577.fr)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bsky_app_password" {
+  description = "App password Bluesky"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

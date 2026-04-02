@@ -48,6 +48,8 @@ module "functions" {
   database_url           = module.database.connection_url
   assemblee_api_base_url = var.assemblee_api_base_url
   gouv_api_base_url      = var.gouv_api_base_url
+  bsky_identifier        = var.bsky_identifier
+  bsky_app_password      = var.bsky_app_password
 }
 
 module "frontend" {
