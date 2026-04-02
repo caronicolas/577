@@ -27,6 +27,8 @@ class ScrutinListItem(BaseModel):
     nombre_pours: Optional[int]
     nombre_contres: Optional[int]
     nombre_abstentions: Optional[int]
+    dossier_ref: Optional[str] = None
+    dossier_libelle: Optional[str] = None
     position: Optional[str] = None  # présent uniquement quand filtré par depute_id
 
 
@@ -58,6 +60,8 @@ class ScrutinDetail(BaseModel):
     nombre_abstentions: Optional[int]
     url_an: Optional[str]
     expose_sommaire: Optional[str] = None
+    dossier_ref: Optional[str] = None
+    dossier_libelle: Optional[str] = None
     legislature: int
     votes: list[VoteDeputeItem]
 
@@ -67,11 +71,46 @@ class ScrutinDetail(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class DossierItem(BaseModel):
+    dossier_ref: str
+    dossier_libelle: str
+    nb_scrutins: int
+
+
+@router.get("/dossiers", response_model=list[DossierItem])
+async def list_dossiers(
+    session: AsyncSession = Depends(get_session),
+) -> list[DossierItem]:
+    """Liste des dossiers législatifs distincts ayant des scrutins."""
+    stmt = (
+        select(
+            Scrutin.dossier_ref,
+            Scrutin.dossier_libelle,
+            func.count(Scrutin.id).label("nb_scrutins"),
+        )
+        .where(Scrutin.dossier_ref.is_not(None))
+        .group_by(Scrutin.dossier_ref, Scrutin.dossier_libelle)
+        .order_by(Scrutin.dossier_libelle)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        DossierItem(
+            dossier_ref=row.dossier_ref,
+            dossier_libelle=row.dossier_libelle or row.dossier_ref,
+            nb_scrutins=row.nb_scrutins,
+        )
+        for row in rows
+    ]
+
+
 @router.get("", response_model=ScrutinListResponse)
 async def list_scrutins(
     q: Optional[str] = Query(None, description="Recherche dans le titre"),
     depute_id: Optional[str] = Query(
         None, description="Filtrer par député (retourne sa position)"
+    ),
+    dossier_ref: Optional[str] = Query(
+        None, description="Filtrer par dossier législatif"
     ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -86,6 +125,8 @@ async def list_scrutins(
         )
         if q:
             base = base.where(Scrutin.titre.ilike(f"%{q}%"))
+        if dossier_ref:
+            base = base.where(Scrutin.dossier_ref == dossier_ref)
 
         total = (
             await session.execute(select(func.count()).select_from(base.subquery()))
@@ -110,6 +151,8 @@ async def list_scrutins(
                     nombre_pours=s.nombre_pours,
                     nombre_contres=s.nombre_contres,
                     nombre_abstentions=s.nombre_abstentions,
+                    dossier_ref=s.dossier_ref,
+                    dossier_libelle=s.dossier_libelle,
                     position=position,
                 )
                 for s, position in rows
@@ -120,6 +163,8 @@ async def list_scrutins(
     base_q = select(Scrutin)
     if q:
         base_q = base_q.where(Scrutin.titre.ilike(f"%{q}%"))
+    if dossier_ref:
+        base_q = base_q.where(Scrutin.dossier_ref == dossier_ref)
 
     total = (
         await session.execute(select(func.count()).select_from(base_q.subquery()))
@@ -148,6 +193,8 @@ async def list_scrutins(
                 nombre_pours=s.nombre_pours,
                 nombre_contres=s.nombre_contres,
                 nombre_abstentions=s.nombre_abstentions,
+                dossier_ref=s.dossier_ref,
+                dossier_libelle=s.dossier_libelle,
             )
             for s in scrutins
         ],
@@ -190,6 +237,8 @@ async def get_scrutin(
         nombre_abstentions=scrutin.nombre_abstentions,
         url_an=scrutin.url_an,
         expose_sommaire=expose_sommaire,
+        dossier_ref=scrutin.dossier_ref,
+        dossier_libelle=scrutin.dossier_libelle,
         legislature=scrutin.legislature,
         votes=[
             VoteDeputeItem(

@@ -29,6 +29,7 @@
     votes: VoteJour[];
     amendements: AmendementJour[];
     commissions: CommissionJour[];
+    nb_scrutins_seance: number | null;
   }
 
   interface Props {
@@ -240,7 +241,13 @@
     {#if !a}
       <div class="tooltip-line">Aucune donnée</div>
     {:else if !a.present}
-      <div class="tooltip-line">Absent</div>
+      <div class="tooltip-line tooltip-absent">Absent</div>
+      {#if a.nb_scrutins_seance}
+        <div class="tooltip-note">
+          {a.nb_scrutins_seance} scrutin{a.nb_scrutins_seance > 1 ? 's' : ''} ont eu lieu ce jour
+          sans qu'il·elle n'y ait participé (ni pour, ni contre, ni abstention, ni non-votant).
+        </div>
+      {/if}
     {:else}
       <div class="tooltip-line">Présent en séance</div>
       {#if a.votes.length > 0}
@@ -394,5 +401,18 @@
     font-family: var(--font-mono);
     color: var(--color-commission);
     flex-shrink: 0;
+  }
+
+  .tooltip-absent {
+    color: var(--color-absent);
+    font-weight: 600;
+  }
+
+  .tooltip-note {
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #718096);
+    line-height: 1.4;
+    font-style: italic;
   }
 </style>

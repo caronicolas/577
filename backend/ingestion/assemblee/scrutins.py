@@ -53,6 +53,8 @@ class ScrutinNormalise:
     url_an: Optional[str] = None
     ref_amendement: Optional[str] = None
     objet_libelle: Optional[str] = None
+    dossier_ref: Optional[str] = None
+    dossier_libelle: Optional[str] = None
     legislature: int = LEGISLATURE
 
 
@@ -158,6 +160,18 @@ def _normalise_scrutin(
             if objet_libelle_raw and not isinstance(objet_libelle_raw, dict)
             else None
         )
+        dossier = objet.get("dossierLegislatif")
+        if isinstance(dossier, dict):
+            dossier_ref = dossier.get("dossierRef") or None
+            dossier_libelle_raw = dossier.get("libelle")
+            dossier_libelle = (
+                str(dossier_libelle_raw).strip()
+                if dossier_libelle_raw and not isinstance(dossier_libelle_raw, dict)
+                else None
+            )
+        else:
+            dossier_ref = None
+            dossier_libelle = None
 
         s = ScrutinNormalise(
             id=uid,
@@ -173,6 +187,8 @@ def _normalise_scrutin(
             url_an=url_an,
             ref_amendement=ref_amendement,
             objet_libelle=objet_libelle,
+            dossier_ref=dossier_ref,
+            dossier_libelle=dossier_libelle,
         )
 
         votes = _extract_votes(uid, scrutin.get("ventilationVotes", {}))
@@ -308,12 +324,14 @@ _UPSERT_SCRUTIN = """
     INSERT INTO scrutins (
         id, numero, titre, date_seance, type_vote, sort,
         nombre_votants, nombre_pours, nombre_contres, nombre_abstentions,
-        url_an, ref_amendement, objet_libelle, legislature, updated_at
+        url_an, ref_amendement, objet_libelle, dossier_ref, dossier_libelle,
+        legislature, updated_at
     ) VALUES (
         %(id)s, %(numero)s, %(titre)s, %(date_seance)s, %(type_vote)s, %(sort)s,
         %(nombre_votants)s, %(nombre_pours)s, %(nombre_contres)s,
         %(nombre_abstentions)s, %(url_an)s, %(ref_amendement)s,
-        %(objet_libelle)s, %(legislature)s, now()
+        %(objet_libelle)s, %(dossier_ref)s, %(dossier_libelle)s,
+        %(legislature)s, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         titre              = EXCLUDED.titre,
@@ -326,6 +344,8 @@ _UPSERT_SCRUTIN = """
         url_an             = EXCLUDED.url_an,
         ref_amendement     = EXCLUDED.ref_amendement,
         objet_libelle      = EXCLUDED.objet_libelle,
+        dossier_ref        = EXCLUDED.dossier_ref,
+        dossier_libelle    = EXCLUDED.dossier_libelle,
         updated_at         = now()
 """
 
@@ -355,6 +375,8 @@ async def persist_all(
                     "url_an": s.url_an,
                     "ref_amendement": s.ref_amendement,
                     "objet_libelle": s.objet_libelle,
+                    "dossier_ref": s.dossier_ref,
+                    "dossier_libelle": s.dossier_libelle,
                     "legislature": s.legislature,
                 },
             )

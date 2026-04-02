@@ -85,6 +85,7 @@ class Activite(BaseModel):
     votes: list[VoteJour]
     amendements: list[AmendementJour]
     commissions: list[CommissionJour]
+    nb_scrutins_seance: Optional[int] = None  # scrutins ce jour sans participation
 
 
 class ScrutinResume(BaseModel):
@@ -402,6 +403,32 @@ async def get_activites(
             )
         )
 
+    # -- Jours de séance sans participation (absent) -----------------------------
+    # Compte le nombre de scrutins par date sur la période
+    scrutins_par_date_stmt = (
+        select(Scrutin.date_seance, func.count(Scrutin.id).label("nb"))
+        .where(Scrutin.date_seance >= leg_debut, Scrutin.date_seance <= today)
+        .group_by(Scrutin.date_seance)
+    )
+    scrutins_par_date = {
+        row.date_seance: row.nb
+        for row in (await session.execute(scrutins_par_date_stmt)).all()
+    }
+
+    for seance_date, nb_scrutins in scrutins_par_date.items():
+        if seance_date not in data:
+            # Aucune activité ce jour → absent
+            data[seance_date] = {
+                "present": False,
+                "a_vote": False,
+                "a_depose_amendement": False,
+                "a_commission": False,
+                "votes": [],
+                "amendements": [],
+                "commissions": [],
+                "nb_scrutins_seance": nb_scrutins,
+            }
+
     return [
         Activite(
             date=d,
@@ -413,6 +440,7 @@ async def get_activites(
             votes=v["votes"],
             amendements=v["amendements"],
             commissions=v["commissions"],
+            nb_scrutins_seance=v.get("nb_scrutins_seance"),
         )
         for d, v in sorted(data.items())
     ]
