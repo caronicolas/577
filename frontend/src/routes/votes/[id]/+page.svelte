@@ -105,6 +105,11 @@
       {/if}
     </p>
     <h1>{scrutin.titre}</h1>
+    {#if scrutin.dossier_libelle}
+      <a class="dossier-tag" href="/votes?dossier_ref={scrutin.dossier_ref}">
+        {scrutin.dossier_libelle}
+      </a>
+    {/if}
     {#if scrutin.url_an}
       <a href={scrutin.url_an} target="_blank" rel="noopener noreferrer">
         Document source officiel →
@@ -195,6 +200,25 @@
 
 <style>
   .header { margin-bottom: 1.5rem; }
+
+  .dossier-tag {
+    display: inline-block;
+    background: var(--color-border, #e2e8f0);
+    color: var(--color-text-muted);
+    border-radius: 3px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.78rem;
+    margin-top: 0.4rem;
+    margin-bottom: 0.5rem;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .dossier-tag:hover {
+    background: var(--color-text-muted);
+    color: var(--color-surface);
+    text-decoration: none;
+  }
 
   .expose {
     margin-top: 1rem;
