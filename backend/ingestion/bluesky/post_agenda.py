@@ -64,20 +64,22 @@ def _get_conn_params() -> dict:
 
 
 async def _get_seances_du_jour(today: date) -> list[str]:
-    """Retourne les titres des séances plénières AN du jour (hors Sénat)."""
+    """Retourne les titres des points ODJ des séances plénières AN du jour."""
     conn_params = _get_conn_params()
     async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
         rows = await conn.execute(
             """
-            SELECT titre
-            FROM seances
-            WHERE date = %s
-              AND is_senat = false
-            ORDER BY id
+            SELECT p.titre
+            FROM points_odj p
+            JOIN seances s ON s.id = p.seance_id
+            WHERE s.date = %s
+              AND s.is_senat = false
+              AND p.titre IS NOT NULL
+            ORDER BY s.id, p.ordre
             """,
             (today,),
         )
-        titres = [row[0] for row in await rows.fetchall() if row[0]]
+        titres = [row[0] for row in await rows.fetchall()]
     return titres
 
 
