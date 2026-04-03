@@ -27,11 +27,19 @@
   <link rel="canonical" href="https://les577.fr{$page.url.pathname}" />
   <meta property="og:url" content="https://les577.fr{$page.url.pathname}" />
   {#if !dev}
-    <!-- Privacy-friendly analytics by Plausible -->
-    <script async src="https://plausible.io/js/pa--kTp7JiBCiBxu4gDeoYlj.js"></script>
+    <!-- Wysistat analytics -->
     <script>
-      window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-      plausible.init()
+      var _wsq = _wsq || [];
+      _wsq.push(['_setNom', 'les577']);
+      _wsq.push(['_wysistat']);
+      (function(){
+        var ws = document.createElement('script');
+        ws.type = 'text/javascript';
+        ws.async = true;
+        ws.src = ('https:' == document.location.protocol ? 'https://www' : 'http://www') + '.wysistat.com/ws.jsa';
+        var s = document.getElementsByTagName('script')[0]||document.getElementsByTagName('body')[0];
+        s.parentNode.insertBefore(ws, s);
+      })();
     </script>
   {/if}
 </svelte:head>
