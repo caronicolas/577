@@ -293,7 +293,8 @@ async def persist_all(
                         "legislature": a.legislature,
                     }
                 )
-            await conn.executemany(_UPSERT, rows)
+            for row in rows:
+                await conn.execute(_UPSERT, row)
             await conn.commit()
             total += len(rows)
             logger.info(
