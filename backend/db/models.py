@@ -1,7 +1,17 @@
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -183,6 +193,35 @@ class VoteDepute(Base):
 
     scrutin: Mapped["Scrutin"] = relationship(back_populates="votes")
     depute: Mapped["Depute"] = relationship(back_populates="votes")
+
+
+class DatanDepute(Base):
+    """Scores Datan par député (source : data.gouv.fr / Datan)."""
+
+    __tablename__ = "datan_deputes"
+
+    identifiant_an: Mapped[str] = mapped_column(Text, primary_key=True)  # ex: PA1234
+    score_participation: Mapped[Optional[float]] = mapped_column(Float)
+    score_participation_specialite: Mapped[Optional[float]] = mapped_column(Float)
+    score_loyaute: Mapped[Optional[float]] = mapped_column(Float)
+    score_majorite: Mapped[Optional[float]] = mapped_column(Float)
+    date_maj: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class DatanGroupe(Base):
+    """Scores Datan par groupe parlementaire (source : data.gouv.fr / Datan)."""
+
+    __tablename__ = "datan_groupes"
+
+    libelle_abrev: Mapped[str] = mapped_column(Text, primary_key=True)  # ex: SOC, RN
+    score_cohesion: Mapped[Optional[float]] = mapped_column(Float)
+    score_participation: Mapped[Optional[float]] = mapped_column(Float)
+    score_majorite: Mapped[Optional[float]] = mapped_column(Float)
+    women_pct: Mapped[Optional[float]] = mapped_column(Float)
+    age_moyen: Mapped[Optional[float]] = mapped_column(Float)
+    score_rose: Mapped[Optional[float]] = mapped_column(Float)
+    position_politique: Mapped[Optional[str]] = mapped_column(Text)
+    date_maj: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
 
 class Amendement(Base):

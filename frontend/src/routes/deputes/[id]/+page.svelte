@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import ActivityCalendar from '$lib/components/ActivityCalendar.svelte';
+  import ScoreGauges from '$lib/components/ScoreGauges.svelte';
   import { apiBase } from '$lib/api';
 
   const id = $derived($page.params.id);
@@ -172,6 +173,13 @@
     <h2>Activité — 17<sup>e</sup> législature</h2>
     <ActivityCalendar {activites} dateDebut="2024-06-18" dateFin={new Date().toISOString().slice(0, 10)} />
   </section>
+
+  {#if depute.scores_datan}
+    <section class="section">
+      <h2>Scores (source Datan)</h2>
+      <ScoreGauges scores={depute.scores_datan} groupeLibelle={depute.groupe?.libelle ?? null} />
+    </section>
+  {/if}
 
   <div class="columns">
     <section class="col">

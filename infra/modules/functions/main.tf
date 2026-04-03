@@ -147,3 +147,31 @@ resource "scaleway_function_cron" "post_agenda_bluesky_daily" {
   schedule    = "0 8 * * *" # 08:00 UTC (10h Paris) chaque jour
   args        = jsonencode({})
 }
+
+resource "scaleway_function" "ingest_datan" {
+  name         = "ingest-datan"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "datan.handle"
+  privacy      = "private"
+  timeout      = 120
+  max_scale    = 1
+  memory_limit = 256
+  zip_file     = "functions/datan.zip"
+  zip_hash     = try(filesha256("functions/datan.zip"), "")
+  deploy       = true
+
+  environment_variables = {
+    GOUV_API_BASE_URL = var.gouv_api_base_url
+  }
+
+  secret_environment_variables = {
+    DATABASE_URL = var.database_url
+  }
+}
+
+resource "scaleway_function_cron" "datan_weekly" {
+  function_id = scaleway_function.ingest_datan.id
+  schedule    = "0 3 * * 2" # Mardi 03:00 UTC (datasets MAJ hebdo)
+  args        = jsonencode({ type = "datan" })
+}
