@@ -48,7 +48,7 @@ BLUESKY_DIR="$REPO_ROOT/backend/ingestion/bluesky"
 build_zip "scrutins"    "$INGESTION_DIR"
 build_zip "deputes"     "$INGESTION_DIR"
 build_zip "agenda"      "$INGESTION_DIR"
-build_zip "amendements" "$INGESTION_DIR" "sqlalchemy asyncpg pydantic"
+build_zip "amendements" "$INGESTION_DIR" "sqlalchemy pydantic"
 build_zip "post_agenda" "$BLUESKY_DIR"
 
 rm -rf "$TMP_DIR"

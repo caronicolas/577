@@ -29,7 +29,10 @@ ZIP_URL = (
     "https://data.assemblee-nationale.fr/static/openData/repository"
     "/17/loi/amendements_div_legis/Amendements.json.zip"
 )
-DATABASE_URL = os.environ["DATABASE_URL"]
+# Convertir asyncpg → psycopg pour éviter les dépendances binaires dans le ZIP
+DATABASE_URL = os.environ["DATABASE_URL"].replace(
+    "postgresql+asyncpg://", "postgresql+psycopg://"
+)
 LEGISLATURE = 17
 
 _HTML_TAG = re.compile(r"<[^>]+>")
