@@ -96,24 +96,50 @@ async def get_agenda(
     # Grouper par date
     jours_map: dict[date, dict] = {}
 
+    # Fusionner les séances par (date, is_senat) — l'AN exporte parfois plusieurs
+    # fichiers pour la même journée (matin/après-midi/soir) avec le même ODJ.
+    seances_fusionnees: dict[tuple[date, bool], dict] = {}
     for s in seances:
-        if s.date not in jours_map:
-            jours_map[s.date] = {"seances": [], "reunions": []}
-        jours_map[s.date]["seances"].append(
+        key = (s.date, s.is_senat)
+        if key not in seances_fusionnees:
+            seances_fusionnees[key] = {
+                "id": s.id,
+                "date": s.date,
+                "titre": s.titre,
+                "type_seance": s.type_seance,
+                "is_senat": s.is_senat,
+                "points_seen": set(),
+                "points_odj": [],
+            }
+        bucket = seances_fusionnees[key]
+        for p in sorted(s.points_odj, key=lambda x: x.ordre or 0):
+            titre_norm = (p.titre or "").strip()
+            if titre_norm and titre_norm not in bucket["points_seen"]:
+                bucket["points_seen"].add(titre_norm)
+                bucket["points_odj"].append(PointODJItem(ordre=p.ordre, titre=p.titre))
+
+    for key, bucket in seances_fusionnees.items():
+        d = bucket["date"]
+        if d not in jours_map:
+            jours_map[d] = {"seances": [], "reunions": []}
+        jours_map[d]["seances"].append(
             SeanceItem(
-                id=s.id,
-                date=s.date,
-                titre=s.titre,
-                type_seance=s.type_seance,
-                is_senat=s.is_senat,
-                points_odj=[
-                    PointODJItem(ordre=p.ordre, titre=p.titre)
-                    for p in sorted(s.points_odj, key=lambda x: x.ordre or 0)
-                ],
+                id=bucket["id"],
+                date=bucket["date"],
+                titre=bucket["titre"],
+                type_seance=bucket["type_seance"],
+                is_senat=bucket["is_senat"],
+                points_odj=bucket["points_odj"],
             )
         )
 
+    # Dédupliquer les réunions par (date, organe_id, heure_debut)
+    reunions_vues: set[tuple] = set()
     for r in reunions:
+        dedup_key = (r.date, r.organe_id, r.heure_debut)
+        if dedup_key in reunions_vues:
+            continue
+        reunions_vues.add(dedup_key)
         if r.date not in jours_map:
             jours_map[r.date] = {"seances": [], "reunions": []}
         jours_map[r.date]["reunions"].append(
