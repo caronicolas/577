@@ -45,6 +45,7 @@ class AmendementNormalise(BaseModel):
     numero: Optional[str] = None
     titre: Optional[str] = None
     texte_legislature: Optional[str] = None
+    dossier_ref: Optional[str] = None
     date_depot: Optional[date] = None
     sort: Optional[str] = None
     expose_sommaire: Optional[str] = None
@@ -69,7 +70,9 @@ def _nil(value: object) -> bool:
     return isinstance(value, dict) and value.get("@xsi:nil") == "true"
 
 
-def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
+def _normalise_amendement(
+    amend: dict, dossier_ref: str | None = None
+) -> AmendementNormalise | None:
     try:
         uid = amend.get("uid")
         if not uid:
@@ -122,6 +125,7 @@ def _normalise_amendement(amend: dict) -> AmendementNormalise | None:
             numero=numero,
             titre=titre,
             texte_legislature=texte_legislature,
+            dossier_ref=dossier_ref,
             date_depot=date_depot,
             sort=sort,
             expose_sommaire=expose_sommaire,
@@ -165,7 +169,9 @@ def _parse_zip(content: bytes) -> list[AmendementNormalise]:
             try:
                 data = json.loads(zf.read(name))
                 amend = data.get("amendement", data)
-                a = _normalise_amendement(amend)
+                parts = name.split("/")
+                dossier_ref = parts[1] if len(parts) >= 3 else None
+                a = _normalise_amendement(amend, dossier_ref=dossier_ref)
                 if a:
                     amendements.append(a)
             except Exception:
@@ -200,16 +206,17 @@ _FETCH_DEPUTE_IDS = text("SELECT id FROM deputes")
 _UPSERT = text(
     """
     INSERT INTO amendements (
-        id, numero, titre, texte_legislature, date_depot, sort,
+        id, numero, titre, texte_legislature, dossier_ref, date_depot, sort,
         expose_sommaire, url_an, depute_id, legislature, updated_at
     ) VALUES (
-        :id, :numero, :titre, :texte_legislature, :date_depot, :sort,
+        :id, :numero, :titre, :texte_legislature, :dossier_ref, :date_depot, :sort,
         :expose_sommaire, :url_an, :depute_id, :legislature, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         numero            = EXCLUDED.numero,
         titre             = EXCLUDED.titre,
         texte_legislature = EXCLUDED.texte_legislature,
+        dossier_ref       = EXCLUDED.dossier_ref,
         date_depot        = EXCLUDED.date_depot,
         sort              = EXCLUDED.sort,
         expose_sommaire   = EXCLUDED.expose_sommaire,

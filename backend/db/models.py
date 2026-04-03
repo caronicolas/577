@@ -194,6 +194,7 @@ class Amendement(Base):
     numero: Mapped[Optional[str]] = mapped_column(String(20))
     titre: Mapped[Optional[str]] = mapped_column(Text)
     texte_legislature: Mapped[Optional[str]] = mapped_column(String(50))
+    dossier_ref: Mapped[Optional[str]] = mapped_column(String(50), index=True)
     date_depot: Mapped[Optional[date]] = mapped_column(Date, index=True)
     sort: Mapped[Optional[str]] = mapped_column(String(50))
     expose_sommaire: Mapped[Optional[str]] = mapped_column(Text)
