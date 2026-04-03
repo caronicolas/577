@@ -411,6 +411,35 @@ async def persist_all(
         await conn.commit()
         logger.info("%d votes nominatifs insérés via COPY", total_votes)
 
+        # 4. Backfill dossier_ref depuis amendements pour les scrutins sans dossier
+        await conn.execute(
+            """
+            UPDATE scrutins s
+            SET dossier_ref = a.dossier_ref
+            FROM amendements a
+            WHERE s.ref_amendement = a.id
+              AND s.dossier_ref IS NULL
+              AND a.dossier_ref IS NOT NULL
+            """
+        )
+        # 5. Backfill dossier_libelle depuis les scrutins frères du même dossier
+        await conn.execute(
+            """
+            UPDATE scrutins s
+            SET dossier_libelle = (
+                SELECT s2.dossier_libelle
+                FROM scrutins s2
+                WHERE s2.dossier_ref = s.dossier_ref
+                  AND s2.dossier_libelle IS NOT NULL
+                LIMIT 1
+            )
+            WHERE s.dossier_ref IS NOT NULL
+              AND s.dossier_libelle IS NULL
+            """
+        )
+        await conn.commit()
+        logger.info("Backfill dossier_ref/libelle depuis amendements terminé")
+
     return len(scrutins)
 
 
