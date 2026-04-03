@@ -42,5 +42,5 @@ jobs:
           TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
           TF_VAR_bsky_identifier: ${{ secrets.BSKY_IDENTIFIER }}
-          TF_VAR_bsky_app_password: ${{ secrets.BLUESKY_PASSWORD }}
+          TF_VAR_bsky_app_password: ${{ secrets.BSKY_APP_PASSWORD }}
         run: terraform apply -auto-approve -target=module.functions
