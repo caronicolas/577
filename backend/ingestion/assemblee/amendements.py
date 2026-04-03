@@ -29,10 +29,6 @@ ZIP_URL = (
     "https://data.assemblee-nationale.fr/static/openData/repository"
     "/17/loi/amendements_div_legis/Amendements.json.zip"
 )
-# Convertir asyncpg → psycopg pour éviter les dépendances binaires dans le ZIP
-DATABASE_URL = os.environ["DATABASE_URL"].replace(
-    "postgresql+asyncpg://", "postgresql+psycopg://"
-)
 LEGISLATURE = 17
 
 _HTML_TAG = re.compile(r"<[^>]+>")
@@ -238,9 +234,10 @@ async def _load_depute_ids(session: AsyncSession) -> set[str]:
 async def persist_all(
     amendements: list[AmendementNormalise],
     depute_ids: set[str],
+    db_url: str,
     batch_size: int = 500,
 ) -> int:
-    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    engine = create_async_engine(db_url, pool_pre_ping=True)
     Session = async_sessionmaker(engine, expire_on_commit=False)
 
     total = 0
@@ -277,17 +274,22 @@ async def persist_all(
 async def _main() -> dict:
     logger.info("Démarrage ingestion amendements — législature %d", LEGISLATURE)
 
+    # Lu ici (dans une fonction) pour éviter l'échec à l'import si l'env var est absente
+    db_url = os.environ["DATABASE_URL"].replace(
+        "postgresql+asyncpg://", "postgresql+psycopg://"
+    )
+
     amendements = await fetch_all_amendements()
 
     # Charger les IDs députés pour filtrage FK
-    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    engine = create_async_engine(db_url, pool_pre_ping=True)
     Session = async_sessionmaker(engine, expire_on_commit=False)
     async with Session() as session:
         depute_ids = await _load_depute_ids(session)
     await engine.dispose()
     logger.info("%d députés connus en base", len(depute_ids))
 
-    count = await persist_all(amendements, depute_ids)
+    count = await persist_all(amendements, depute_ids, db_url)
     logger.info("Terminé : %d amendements upsertés", count)
     return {"status": "ok", "upserted": count}
 
