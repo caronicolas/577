@@ -14,13 +14,13 @@ import logging
 import os
 import re
 import zipfile
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
+from urllib.parse import unquote
 
 import httpx
-from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import psycopg
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -35,11 +35,12 @@ _HTML_TAG = re.compile(r"<[^>]+>")
 
 
 # ---------------------------------------------------------------------------
-# Modèle Pydantic
+# Modèle
 # ---------------------------------------------------------------------------
 
 
-class AmendementNormalise(BaseModel):
+@dataclass
+class AmendementNormalise:
     id: str
     numero: Optional[str] = None
     titre: Optional[str] = None
@@ -50,7 +51,7 @@ class AmendementNormalise(BaseModel):
     expose_sommaire: Optional[str] = None
     url_an: Optional[str] = None
     depute_id: Optional[str] = None
-    legislature: int = LEGISLATURE
+    legislature: int = field(default=LEGISLATURE)
 
 
 # ---------------------------------------------------------------------------
@@ -197,19 +198,58 @@ async def fetch_all_amendements() -> list[AmendementNormalise]:
 
 
 # ---------------------------------------------------------------------------
+# Connexion DB
+# ---------------------------------------------------------------------------
+
+
+def _get_conn_params() -> dict:
+    """Parse DATABASE_URL → kwargs pour psycopg.AsyncConnection.connect()."""
+    url = os.environ["DATABASE_URL"]
+    url = url.split("://", 1)[1]
+
+    at = url.rfind("@")
+    userinfo = url[:at]
+    hostinfo = url[at + 1 :]
+
+    if ":" in userinfo:
+        user, password = userinfo.split(":", 1)
+    else:
+        user, password = userinfo, ""
+
+    slash = hostinfo.find("/")
+    if slash >= 0:
+        hostport, dbname_raw = hostinfo[:slash], hostinfo[slash + 1 :]
+    else:
+        hostport, dbname_raw = hostinfo, ""
+    dbname = dbname_raw.split("?", 1)[0]
+
+    if ":" in hostport:
+        colon = hostport.rfind(":")
+        host, port = hostport[:colon], int(hostport[colon + 1 :])
+    else:
+        host, port = hostport, 5432
+
+    return {
+        "host": host,
+        "port": port,
+        "dbname": dbname,
+        "user": unquote(user),
+        "password": unquote(password),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_FETCH_DEPUTE_IDS = text("SELECT id FROM deputes")
-
-_UPSERT = text(
-    """
+_UPSERT = """
     INSERT INTO amendements (
         id, numero, titre, texte_legislature, dossier_ref, date_depot, sort,
         expose_sommaire, url_an, depute_id, legislature, updated_at
     ) VALUES (
-        :id, :numero, :titre, :texte_legislature, :dossier_ref, :date_depot, :sort,
-        :expose_sommaire, :url_an, :depute_id, :legislature, now()
+        %(id)s, %(numero)s, %(titre)s, %(texte_legislature)s, %(dossier_ref)s,
+        %(date_depot)s, %(sort)s, %(expose_sommaire)s, %(url_an)s,
+        %(depute_id)s, %(legislature)s, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         numero            = EXCLUDED.numero,
@@ -223,46 +263,45 @@ _UPSERT = text(
         depute_id         = EXCLUDED.depute_id,
         updated_at        = now()
 """
-)
-
-
-async def _load_depute_ids(session: AsyncSession) -> set[str]:
-    result = await session.execute(_FETCH_DEPUTE_IDS)
-    return {row[0] for row in result}
 
 
 async def persist_all(
     amendements: list[AmendementNormalise],
     depute_ids: set[str],
-    db_url: str,
     batch_size: int = 500,
 ) -> int:
-    engine = create_async_engine(db_url, pool_pre_ping=True)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
+    conn_params = _get_conn_params()
 
     total = 0
-    for i in range(0, len(amendements), batch_size):
-        batch = amendements[i : i + batch_size]
-        rows = []
-        for a in batch:
-            d = a.model_dump()
-            # Filtrage FK en Python — depute_id mis à None si absent en base
-            if d["depute_id"] not in depute_ids:
-                d["depute_id"] = None
-            rows.append(d)
+    async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
+        for i in range(0, len(amendements), batch_size):
+            batch = amendements[i : i + batch_size]
+            rows = []
+            for a in batch:
+                rows.append(
+                    {
+                        "id": a.id,
+                        "numero": a.numero,
+                        "titre": a.titre,
+                        "texte_legislature": a.texte_legislature,
+                        "dossier_ref": a.dossier_ref,
+                        "date_depot": a.date_depot,
+                        "sort": a.sort,
+                        "expose_sommaire": a.expose_sommaire,
+                        "url_an": a.url_an,
+                        "depute_id": a.depute_id if a.depute_id in depute_ids else None,
+                        "legislature": a.legislature,
+                    }
+                )
+            await conn.executemany(_UPSERT, rows)
+            await conn.commit()
+            total += len(rows)
+            logger.info(
+                "Amendements : %d/%d traités",
+                min(i + batch_size, len(amendements)),
+                len(amendements),
+            )
 
-        async with Session() as session:
-            async with session.begin():
-                await session.execute(_UPSERT, rows)
-
-        total += len(rows)
-        logger.info(
-            "Amendements : %d/%d traités",
-            min(i + batch_size, len(amendements)),
-            len(amendements),
-        )
-
-    await engine.dispose()
     return total
 
 
@@ -274,22 +313,15 @@ async def persist_all(
 async def _main() -> dict:
     logger.info("Démarrage ingestion amendements — législature %d", LEGISLATURE)
 
-    # Lu ici (dans une fonction) pour éviter l'échec à l'import si l'env var est absente
-    db_url = os.environ["DATABASE_URL"].replace(
-        "postgresql+asyncpg://", "postgresql+psycopg://"
-    )
-
     amendements = await fetch_all_amendements()
 
-    # Charger les IDs députés pour filtrage FK
-    engine = create_async_engine(db_url, pool_pre_ping=True)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
-    async with Session() as session:
-        depute_ids = await _load_depute_ids(session)
-    await engine.dispose()
+    conn_params = _get_conn_params()
+    async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
+        cur = await conn.execute("SELECT id FROM deputes")
+        depute_ids = {row[0] for row in await cur.fetchall()}
     logger.info("%d députés connus en base", len(depute_ids))
 
-    count = await persist_all(amendements, depute_ids, db_url)
+    count = await persist_all(amendements, depute_ids)
     logger.info("Terminé : %d amendements upsertés", count)
     return {"status": "ok", "upserted": count}
 
