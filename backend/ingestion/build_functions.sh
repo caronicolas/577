@@ -13,13 +13,14 @@ INGESTION_DIR="$REPO_ROOT/backend/ingestion/assemblee"
 OUT_DIR="$REPO_ROOT/infra/functions"
 TMP_DIR="$(mktemp -d)"
 
-DEPS="psycopg httpx tenacity"
+BASE_DEPS="psycopg httpx tenacity"
 
 mkdir -p "$OUT_DIR"
 
 build_zip() {
-  local name="$1"     # nom du fichier handler (sans .py)
-  local srcdir="$2"   # répertoire source contenant $name.py
+  local name="$1"       # nom du fichier handler (sans .py)
+  local srcdir="$2"     # répertoire source contenant $name.py
+  local extra_deps="${3:-}"  # dépendances supplémentaires optionnelles
   local workdir="$TMP_DIR/$name"
 
   echo "==> Building $name.zip"
@@ -30,7 +31,8 @@ build_zip() {
   cp "$srcdir/$name.py" "$workdir/$name.py"
 
   # Dépendances pip installées à plat dans le ZIP
-  pip3 install $DEPS --target "$workdir" --quiet --disable-pip-version-check
+  # shellcheck disable=SC2086
+  pip3 install $BASE_DEPS $extra_deps --target "$workdir" --quiet --disable-pip-version-check
 
   # Suppression des fichiers inutiles pour alléger le ZIP
   find "$workdir" -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
@@ -43,10 +45,10 @@ build_zip() {
 
 BLUESKY_DIR="$REPO_ROOT/backend/ingestion/bluesky"
 
-build_zip "scrutins"  "$INGESTION_DIR"
-build_zip "deputes"   "$INGESTION_DIR"
-build_zip "agenda"    "$INGESTION_DIR"
-build_zip "amendements" "$INGESTION_DIR"
+build_zip "scrutins"    "$INGESTION_DIR"
+build_zip "deputes"     "$INGESTION_DIR"
+build_zip "agenda"      "$INGESTION_DIR"
+build_zip "amendements" "$INGESTION_DIR" "sqlalchemy asyncpg pydantic"
 build_zip "post_agenda" "$BLUESKY_DIR"
 
 rm -rf "$TMP_DIR"
