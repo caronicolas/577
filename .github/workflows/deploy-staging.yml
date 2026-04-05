@@ -149,6 +149,8 @@ jobs:
     name: Deploy Frontend Staging
     needs: [deploy-staging, migrate-staging]
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     defaults:
       run:
         working-directory: frontend
