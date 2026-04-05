@@ -60,6 +60,7 @@ class Depute(Base):
     bluesky_url: Mapped[Optional[str]] = mapped_column(String(500))
     mandat_debut: Mapped[Optional[date]] = mapped_column(Date)
     mandat_fin: Mapped[Optional[date]] = mapped_column(Date)
+    actif: Mapped[bool] = mapped_column(Boolean, default=True)
     legislature: Mapped[int] = mapped_column(Integer, default=17)
     groupe_id: Mapped[Optional[str]] = mapped_column(ForeignKey("organes.id"))
     updated_at: Mapped[datetime] = mapped_column(

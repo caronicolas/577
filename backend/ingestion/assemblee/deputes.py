@@ -294,13 +294,13 @@ _UPSERT = """
         id, nom, prenom, nom_de_famille, sexe, date_naissance, profession,
         num_departement, nom_circonscription, num_circonscription,
         place_hemicycle, url_photo, url_an, mandat_debut, mandat_fin,
-        legislature, groupe_id, updated_at
+        actif, legislature, groupe_id, updated_at
     ) VALUES (
         %(id)s, %(nom)s, %(prenom)s, %(nom_de_famille)s, %(sexe)s,
         %(date_naissance)s, %(profession)s, %(num_departement)s,
         %(nom_circonscription)s, %(num_circonscription)s, %(place_hemicycle)s,
         %(url_photo)s, %(url_an)s, %(mandat_debut)s, %(mandat_fin)s,
-        %(legislature)s, %(groupe_id)s, now()
+        true, %(legislature)s, %(groupe_id)s, now()
     )
     ON CONFLICT (id) DO UPDATE SET
         nom                 = EXCLUDED.nom,
@@ -317,6 +317,7 @@ _UPSERT = """
         url_an              = EXCLUDED.url_an,
         mandat_debut        = EXCLUDED.mandat_debut,
         mandat_fin          = EXCLUDED.mandat_fin,
+        actif               = true,
         legislature         = EXCLUDED.legislature,
         groupe_id           = COALESCE(EXCLUDED.groupe_id, deputes.groupe_id),
         updated_at          = now()
@@ -356,6 +357,21 @@ async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:
                 },
             )
         await conn.commit()
+
+        # Marquer comme inactifs les députés absents du ZIP actifs
+        active_ids = [d.id for d in deputes]
+        await conn.execute(
+            "UPDATE deputes SET actif = false WHERE id != ALL(%(ids)s)",
+            {"ids": active_ids},
+        )
+        inactive_count = (
+            await (
+                await conn.execute("SELECT COUNT(*) FROM deputes WHERE actif = false")
+            ).fetchone()
+        )[0]
+        await conn.commit()
+        logger.info("%d députés marqués inactifs", inactive_count)
+
     return len(deputes)
 
 

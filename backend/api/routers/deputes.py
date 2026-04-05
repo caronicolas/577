@@ -45,6 +45,7 @@ class DeputeListItem(BaseModel):
     num_circonscription: Optional[int]
     place_hemicycle: Optional[int]
     url_photo: Optional[str]
+    actif: bool = True
     groupe: Optional[GroupeResume]
 
     model_config = {"from_attributes": True}
@@ -135,6 +136,7 @@ class DeputeDetail(BaseModel):
     bluesky_url: Optional[str]
     mandat_debut: Optional[date]
     mandat_fin: Optional[date]
+    actif: bool = True
     legislature: int
     groupe: Optional[GroupeResume]
     scores_datan: Optional[ScoresDatan]
@@ -269,6 +271,7 @@ async def get_depute(
         bluesky_url=depute.bluesky_url,
         mandat_debut=depute.mandat_debut,
         mandat_fin=depute.mandat_fin,
+        actif=depute.actif,
         legislature=depute.legislature,
         groupe=(
             GroupeResume(

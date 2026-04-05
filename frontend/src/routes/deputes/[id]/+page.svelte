@@ -82,10 +82,23 @@
 {:else if depute}
   <div class="profile">
     {#if depute.url_photo}
-      <img src={depute.url_photo} alt={depute.nom} class="photo" loading="lazy" />
+      <img
+        src={depute.url_photo}
+        alt={depute.nom}
+        class="photo"
+        loading="lazy"
+        onerror={(e) => {
+          const img = e.currentTarget as HTMLImageElement;
+          img.onerror = null;
+          img.src = `https://datan.fr/assets/imgs/deputes_original/depute_${depute.id.replace('PA', '')}.png`;
+        }}
+      />
     {/if}
     <div class="meta">
       <h1>{depute.prenom} {depute.nom_de_famille}</h1>
+      {#if depute.actif === false}
+        <span class="badge-inactif">Mandat terminé</span>
+      {/if}
       {#if depute.groupe}
         <div class="groupe">
           <span
@@ -291,6 +304,17 @@
   }
 
   h1 { font-size: 1.75rem; font-weight: 700; }
+
+  .badge-inactif {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-border);
+    color: var(--color-text-muted);
+    margin-bottom: 0.4rem;
+  }
 
   .badge {
     display: inline-block;
