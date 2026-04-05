@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 env:
   REGISTRY: rg.fr-par.scw.cloud
