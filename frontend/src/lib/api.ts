@@ -1,2 +1,2 @@
-import { PUBLIC_API_BASE_URL } from '$env/static/public';
-export const apiBase = PUBLIC_API_BASE_URL || '/api';
+export const apiBase =
+  (import.meta.env.PUBLIC_API_BASE_URL as string | undefined) ?? '/api';
