@@ -44,12 +44,14 @@ build_zip() {
 }
 
 BLUESKY_DIR="$REPO_ROOT/backend/ingestion/bluesky"
+GOUV_DIR="$REPO_ROOT/backend/ingestion/gouv"
 
 build_zip "scrutins"    "$INGESTION_DIR"
 build_zip "deputes"     "$INGESTION_DIR"
 build_zip "agenda"      "$INGESTION_DIR"
 build_zip "amendements" "$INGESTION_DIR"
 build_zip "post_agenda" "$BLUESKY_DIR"
+build_zip "datan"       "$GOUV_DIR"
 
 rm -rf "$TMP_DIR"
 echo "Done."

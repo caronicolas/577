@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from db.models import (
     Amendement,
+    DatanDepute,
     Depute,
     PresenceCommission,
     ReunionCommission,
@@ -107,6 +108,13 @@ class AmendementResume(BaseModel):
     url_an: Optional[str]
 
 
+class ScoresDatan(BaseModel):
+    score_participation: Optional[float]
+    score_participation_specialite: Optional[float]
+    score_loyaute: Optional[float]
+    score_majorite: Optional[float]
+
+
 class DeputeDetail(BaseModel):
     id: str
     nom: str
@@ -129,6 +137,7 @@ class DeputeDetail(BaseModel):
     mandat_fin: Optional[date]
     legislature: int
     groupe: Optional[GroupeResume]
+    scores_datan: Optional[ScoresDatan]
     votes: list[ScrutinResume]
     amendements: list[AmendementResume]
 
@@ -233,6 +242,13 @@ async def get_depute(
     )
     amendements = (await session.execute(amendements_stmt)).scalars().all()
 
+    # Scores Datan (optionnel — absent si non encore ingéré)
+    datan = (
+        await session.execute(
+            select(DatanDepute).where(DatanDepute.identifiant_an == depute_id)
+        )
+    ).scalar_one_or_none()
+
     return DeputeDetail(
         id=depute.id,
         nom=depute.nom,
@@ -262,6 +278,16 @@ async def get_depute(
                 couleur=depute.groupe.couleur,
             )
             if depute.groupe
+            else None
+        ),
+        scores_datan=(
+            ScoresDatan(
+                score_participation=datan.score_participation,
+                score_participation_specialite=datan.score_participation_specialite,
+                score_loyaute=datan.score_loyaute,
+                score_majorite=datan.score_majorite,
+            )
+            if datan
             else None
         ),
         votes=[
