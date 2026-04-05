@@ -161,7 +161,7 @@ async def list_deputes(
     base = (
         select(Depute)
         .options(selectinload(Depute.groupe))
-        .where(Depute.mandat_fin.is_(None))
+        .where(Depute.actif.is_(True))
     )
     if groupe:
         base = base.where(Depute.groupe.has(sigle=groupe))
@@ -188,6 +188,7 @@ async def list_deputes(
             num_circonscription=d.num_circonscription,
             place_hemicycle=d.place_hemicycle,
             url_photo=d.url_photo,
+            actif=d.actif,
             groupe=(
                 GroupeResume(
                     id=d.groupe.id,

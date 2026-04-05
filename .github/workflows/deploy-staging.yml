@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 env:
   REGISTRY: rg.fr-par.scw.cloud
@@ -148,6 +149,8 @@ jobs:
     name: Deploy Frontend Staging
     needs: [deploy-staging, migrate-staging]
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     defaults:
       run:
         working-directory: frontend
@@ -179,6 +182,7 @@ jobs:
           SOURCE_DIR: frontend/build
 
       - name: Comment PR with staging URL
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
