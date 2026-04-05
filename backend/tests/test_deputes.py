@@ -126,6 +126,7 @@ async def test_list_deputes_exclut_ancien_depute(
         legislature=17,
         groupe_id=groupe.id,
         mandat_fin=date(2024, 1, 1),
+        actif=False,
     )
     session.add(ancien)
     await session.commit()
