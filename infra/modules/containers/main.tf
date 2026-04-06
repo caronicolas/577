@@ -42,3 +42,8 @@ resource "scaleway_container" "api" {
     DATABASE_URL = var.database_url
   }
 }
+
+resource "scaleway_container_domain" "api" {
+  container_id = scaleway_container.api.id
+  hostname     = "api.les577.fr"
+}
