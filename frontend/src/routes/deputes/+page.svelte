@@ -7,6 +7,10 @@
   let total = $state(0);
   let loading = $state(true);
 
+  const hors_hemicycle = $derived(
+    deputes.filter((d) => d.place_hemicycle != null && d.place_hemicycle > 577).length
+  );
+
   $effect(() => {
     const params = new URLSearchParams();
     if (search) params.set('q', search);
@@ -61,18 +65,20 @@
 {:else}
   <p class="count">
     {total} député{total > 1 ? 's' : ''}
-    {#if total > 577}
-      <span class="info-wrap" aria-describedby="info-tooltip">
-        <span class="info-icon" aria-label="Information sur le nombre de députés">ⓘ</span>
-        <span class="info-tooltip" id="info-tooltip" role="tooltip">
-          L'Assemblée compte 577 sièges, mais {total - 577} députés actifs n'ont pas encore
-          de siège attribué dans les données open data :
-          Charlotte Parmentier-Lecocq et Carole Guillerm (revenues après leur nomination
-          ministérielle sous le gouvernement Barnier) et Alim Latrèche (élu en janvier 2025).
-          Le total reflète les données officielles de l'Assemblée Nationale.
-        </span>
+    <span class="info-wrap" aria-describedby="info-tooltip">
+      <span class="info-icon" aria-label="Information sur le nombre de députés">ⓘ</span>
+      <span class="info-tooltip" id="info-tooltip" role="tooltip">
+        L'Assemblée compte 577 sièges.
+        {#if hors_hemicycle > 0}
+          {hors_hemicycle} suppléant{hors_hemicycle > 1 ? 's' : ''} récemment entré{hors_hemicycle > 1 ? 's' : ''} en fonction
+          n'apparaissent pas dans l'hémicycle : l'AN leur attribue un numéro de siège provisoire
+          (> 577) en attendant une réaffectation officielle. Ils figurent bien dans cette liste
+          et leurs fiches sont accessibles.
+        {:else}
+          Tous les députés actifs ont un siège attribué dans l'hémicycle.
+        {/if}
       </span>
-    {/if}
+    </span>
   </p>
   <ul class="grid">
     {#each deputes as d (d.id)}
