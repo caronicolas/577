@@ -95,7 +95,7 @@ resource "scaleway_container" "staging" {
 # ---------------------------------------------------------------------------
 
 resource "scaleway_object_bucket" "staging_frontend" {
-  name       = "an577-frontend-staging"
+  name       = "test.les577.fr"
   project_id = var.scw_project_id
   region     = "fr-par"
 

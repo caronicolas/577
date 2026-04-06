@@ -175,7 +175,7 @@ jobs:
         with:
           args: --delete --cache-control "public,max-age=0,must-revalidate"
         env:
-          AWS_S3_BUCKET: an577-frontend-staging
+          AWS_S3_BUCKET: test.les577.fr
           AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
           AWS_S3_ENDPOINT: https://s3.fr-par.scw.cloud
