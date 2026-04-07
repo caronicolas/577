@@ -105,7 +105,11 @@ def _formate_post(today: date, titres: list[str]) -> str:
         "décembre",
     ]
     date_str = f"{today.day} {mois[today.month]} {today.year}"
-    header = f"📅 Assemblée Nationale — {date_str}\n\nEn séance :\n"
+    nb = len(titres)
+    header = (
+        f"📅 Assemblée Nationale — {date_str}\n\n"
+        f"En séance ({nb} sujets aujourd'hui) :\n"
+    )
     footer = "\n\n👉 les577.fr/agenda"
     budget = MAX_POST_LENGTH - len(header) - len(footer)
 
