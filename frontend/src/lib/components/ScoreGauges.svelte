@@ -31,6 +31,12 @@
       color: 'var(--color-vote)',
     },
     {
+      label: 'Participation (spécialité)',
+      description: 'Part des scrutins dans son domaine de spécialité (commission principale)',
+      value: scores?.score_participation_specialite ?? null,
+      color: 'var(--color-vote)',
+    },
+    {
       label: 'Loyauté au groupe',
       description: groupeLibelle
         ? `Vote avec ${groupeLibelle} sur les scrutins solennels`
