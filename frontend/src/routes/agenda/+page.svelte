@@ -6,6 +6,16 @@
     titre: string | null;
   }
 
+  interface ScrutinResume {
+    id: string;
+    numero: number;
+    titre: string;
+    sort: string | null;
+    nombre_pours: number | null;
+    nombre_contres: number | null;
+    nombre_abstentions: number | null;
+  }
+
   interface Seance {
     id: string;
     date: string;
@@ -13,6 +23,7 @@
     type_seance: string | null;
     is_senat: boolean;
     points_odj: PointODJ[];
+    scrutins: ScrutinResume[];
   }
 
   interface Reunion {
@@ -34,6 +45,7 @@
 
   let jours = $state<JourAgenda[]>([]);
   let loading = $state(true);
+  let openSeances = $state<Set<string>>(new Set());
 
   const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
@@ -50,8 +62,25 @@
 
   function formatHeure(h: string | null): string {
     if (!h) return '';
-    // Normaliser format HHhMM ou HH:MM
     return h.replace(':', 'h');
+  }
+
+  function toggleSeance(id: string) {
+    const next = new Set(openSeances);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    openSeances = next;
+  }
+
+  function sortLabel(sort: string | null): string {
+    if (!sort) return '';
+    const s = sort.toLowerCase();
+    if (s.includes('adopt')) return 'Adopté';
+    if (s.includes('rejet')) return 'Rejeté';
+    return sort;
   }
 
   $effect(() => {
@@ -89,24 +118,81 @@
       <h2 class="jour-date">{formatDate(jour.date)}</h2>
 
       {#each jour.seances as s (s.id)}
+        {@const isOpen = openSeances.has(s.id)}
+        {@const hasDetails = s.points_odj.length > 0 || s.scrutins.length > 0}
         <div class="event event--seance" class:event--senat={s.is_senat}>
-          <div class="event-header">
+          <button
+            class="event-header"
+            class:event-header--clickable={hasDetails}
+            onclick={() => hasDetails && toggleSeance(s.id)}
+            aria-expanded={isOpen}
+            disabled={!hasDetails}
+          >
             <span class="event-type">{s.is_senat ? 'Sénat' : 'Séance AN'}</span>
             {#if s.titre}
               <span class="event-titre">{s.titre}</span>
             {/if}
-          </div>
-          {#if s.points_odj.length > 0}
-            <ul class="odj">
-              {#each s.points_odj as p}
-                {#if p.titre}
-                  <li class="odj-item">
-                    {#if p.ordre != null}<span class="odj-num">{p.ordre}.</span>{/if}
-                    {p.titre}
-                  </li>
+            {#if hasDetails}
+              <span class="event-meta">
+                {#if s.points_odj.length > 0}
+                  <span class="meta-chip">{s.points_odj.length} point{s.points_odj.length > 1 ? 's' : ''}</span>
                 {/if}
-              {/each}
-            </ul>
+                {#if s.scrutins.length > 0}
+                  <span class="meta-chip meta-chip--vote">{s.scrutins.length} vote{s.scrutins.length > 1 ? 's' : ''}</span>
+                {/if}
+              </span>
+              <span class="chevron" class:chevron--open={isOpen}>▸</span>
+            {/if}
+          </button>
+
+          {#if isOpen}
+            <div class="details">
+              {#if s.points_odj.length > 0}
+                <div class="details-section">
+                  <div class="details-label">Ordre du jour</div>
+                  <ul class="odj">
+                    {#each s.points_odj as p}
+                      {#if p.titre}
+                        <li class="odj-item">
+                          {#if p.ordre != null}<span class="odj-num">{p.ordre}.</span>{/if}
+                          {p.titre}
+                        </li>
+                      {/if}
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+
+              {#if s.scrutins.length > 0}
+                <div class="details-section">
+                  <div class="details-label">Scrutins</div>
+                  <ul class="scrutins">
+                    {#each s.scrutins as sc}
+                      <li class="scrutin-item">
+                        <a href="/votes/{sc.id}" class="scrutin-link">
+                          <span class="scrutin-num">#{sc.numero}</span>
+                          <span class="scrutin-titre">{sc.titre}</span>
+                          {#if sc.sort}
+                            <span
+                              class="scrutin-sort"
+                              class:scrutin-sort--adopte={sc.sort.toLowerCase().includes('adopt')}
+                              class:scrutin-sort--rejete={sc.sort.toLowerCase().includes('rejet')}
+                            >{sortLabel(sc.sort)}</span>
+                          {/if}
+                        </a>
+                        {#if sc.nombre_pours != null}
+                          <span class="scrutin-decompte">
+                            <span class="pour">{sc.nombre_pours}✓</span>
+                            <span class="contre">{sc.nombre_contres}✗</span>
+                            {#if sc.nombre_abstentions}<span class="abst">{sc.nombre_abstentions}○</span>{/if}
+                          </span>
+                        {/if}
+                      </li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+            </div>
           {/if}
         </div>
       {/each}
@@ -201,6 +287,22 @@
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: default;
+  }
+
+  .event-header--clickable {
+    cursor: pointer;
+  }
+
+  .event-header--clickable:hover .event-type {
+    opacity: 0.85;
   }
 
   .event-type {
@@ -224,6 +326,158 @@
     font-size: 0.8rem;
   }
 
+  .event-meta {
+    display: flex;
+    gap: 0.3rem;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  .meta-chip {
+    font-size: 0.68rem;
+    color: var(--color-text-muted);
+    background: var(--color-border);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+  }
+
+  .meta-chip--vote {
+    background: color-mix(in srgb, var(--color-vote) 15%, transparent);
+    color: var(--color-vote);
+  }
+
+  .chevron {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    transition: transform 0.15s;
+    flex-shrink: 0;
+  }
+
+  .chevron--open {
+    transform: rotate(90deg);
+  }
+
+  .details {
+    margin-top: 0.6rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.5rem;
+  }
+
+  .details-section + .details-section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .details-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.4rem;
+  }
+
+  .odj {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .odj-item {
+    display: flex;
+    gap: 0.4rem;
+    align-items: baseline;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    padding: 0.2rem 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .odj-num {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-vote);
+    flex-shrink: 0;
+    min-width: 18px;
+  }
+
+  .scrutins {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .scrutin-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border-top: 1px solid var(--color-border);
+    flex-wrap: wrap;
+  }
+
+  .scrutin-link {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .scrutin-link:hover .scrutin-titre {
+    text-decoration: underline;
+  }
+
+  .scrutin-num {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-vote);
+    flex-shrink: 0;
+  }
+
+  .scrutin-titre {
+    font-size: 0.8rem;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scrutin-sort {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: var(--color-border);
+    color: var(--color-text-muted);
+  }
+
+  .scrutin-sort--adopte {
+    background: #c6f6d5;
+    color: #276749;
+  }
+
+  .scrutin-sort--rejete {
+    background: #fed7d7;
+    color: #9b2c2c;
+  }
+
+  .scrutin-decompte {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .pour { color: #38a169; }
+  .contre { color: #e53e3e; }
+  .abst { color: var(--color-text-muted); }
+
   .event-heure {
     font-family: var(--font-mono);
     font-size: 0.75rem;
@@ -241,30 +495,6 @@
     color: var(--color-text-muted);
     font-size: 0.8rem;
     font-style: italic;
-  }
-
-  .odj {
-    list-style: none;
-    margin-top: 0.5rem;
-    padding-left: 0;
-  }
-
-  .odj-item {
-    display: flex;
-    gap: 0.4rem;
-    align-items: baseline;
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-    padding: 0.15rem 0;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .odj-num {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--color-vote);
-    flex-shrink: 0;
-    min-width: 18px;
   }
 
   .commissions-groupe {
