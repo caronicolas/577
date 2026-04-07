@@ -6,6 +6,15 @@
 
   const id = $derived($page.params.id);
 
+  function age(dateNaissance: string): string {
+    const today = new Date();
+    const birth = new Date(dateNaissance);
+    let a = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) a--;
+    return `${a} ans`;
+  }
+
   function texteNum(ref: string | null): string | null {
     if (!ref) return null;
     const m = ref.match(/B(\d+)$/);
@@ -109,8 +118,10 @@
         </div>
       {/if}
       <p class="circ">{depute.nom_circonscription ?? ''}{depute.num_departement ? ` (${depute.num_departement})` : ''}</p>
-      {#if depute.profession}
-        <p class="detail">{depute.profession}</p>
+      {#if depute.date_naissance || depute.profession}
+        <p class="detail">
+          {#if depute.date_naissance}{age(depute.date_naissance)}{/if}{#if depute.date_naissance && depute.profession} · {/if}{#if depute.profession}{depute.profession}{/if}
+        </p>
       {/if}
       <div class="socials">
         {#if depute.twitter}
