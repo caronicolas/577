@@ -3,7 +3,7 @@ name: Deploy Staging
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 env:
@@ -11,8 +11,56 @@ env:
   IMAGE_NAME: an577/api
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Nettoyage à la fermeture d'une PR
+  # ---------------------------------------------------------------------------
+
+  cleanup-pr-staging:
+    name: Cleanup PR Staging
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Delete PR bucket
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          AWS_DEFAULT_REGION: fr-par
+        run: |
+          BUCKET="pr-${{ github.event.number }}.test.les577.fr"
+          aws s3 rb "s3://$BUCKET" --force \
+            --endpoint-url https://s3.fr-par.scw.cloud \
+            || echo "Bucket $BUCKET inexistant ou déjà supprimé."
+
+      - name: Comment PR — staging supprimé
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Staging déployé')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: '## Staging supprimé\n\nL\'environnement de staging pour cette PR a été nettoyé.',
+              });
+            }
+
+  # ---------------------------------------------------------------------------
+  # Pipeline principal (ouverture / mise à jour / workflow_dispatch)
+  # ---------------------------------------------------------------------------
+
   test:
     name: Lint & Tests
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -57,6 +105,7 @@ jobs:
 
   build-push:
     name: Build & Push Docker
+    if: github.event.action != 'closed'
     needs: test
     runs-on: ubuntu-latest
     outputs:
@@ -88,6 +137,7 @@ jobs:
 
   deploy-staging:
     name: Deploy Staging Infrastructure
+    if: github.event.action != 'closed'
     needs: build-push
     runs-on: ubuntu-latest
     outputs:
@@ -124,6 +174,7 @@ jobs:
 
   migrate-staging:
     name: Run Alembic Migrations (staging)
+    if: github.event.action != 'closed'
     needs: deploy-staging
     runs-on: ubuntu-latest
     defaults:
@@ -147,6 +198,7 @@ jobs:
 
   deploy-frontend-staging:
     name: Deploy Frontend Staging
+    if: github.event.action != 'closed'
     needs: [deploy-staging, migrate-staging]
     runs-on: ubuntu-latest
     permissions:
@@ -165,17 +217,50 @@ jobs:
 
       - run: npm ci
 
+      - name: Determine bucket name
+        id: bucket
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "name=pr-${{ github.event.number }}.test.les577.fr" >> "$GITHUB_OUTPUT"
+            echo "url=https://pr-${{ github.event.number }}.test.les577.fr" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=test.les577.fr" >> "$GITHUB_OUTPUT"
+            echo "url=https://test.les577.fr" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create & configure bucket
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          AWS_DEFAULT_REGION: fr-par
+          BUCKET: ${{ steps.bucket.outputs.name }}
+        run: |
+          aws s3api create-bucket \
+            --bucket "$BUCKET" \
+            --endpoint-url https://s3.fr-par.scw.cloud \
+            || echo "Bucket déjà existant."
+
+          aws s3api put-bucket-website \
+            --bucket "$BUCKET" \
+            --endpoint-url https://s3.fr-par.scw.cloud \
+            --website-configuration '{"IndexDocument":{"Suffix":"index.html"},"ErrorDocument":{"Key":"index.html"}}'
+
+          aws s3api put-bucket-policy \
+            --bucket "$BUCKET" \
+            --endpoint-url https://s3.fr-par.scw.cloud \
+            --policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"PublicRead\",\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":\"s3:GetObject\",\"Resource\":\"$BUCKET/*\"}]}"
+
       - name: Build (staging)
         run: npm run build
         env:
           PUBLIC_API_BASE_URL: https://${{ needs.deploy-staging.outputs.api_url }}
 
-      - name: Deploy to Scaleway Object Storage (staging)
+      - name: Deploy to Scaleway Object Storage
         uses: jakejarvis/s3-sync-action@v0.5.1
         with:
           args: --delete --cache-control "public,max-age=0,must-revalidate"
         env:
-          AWS_S3_BUCKET: test.les577.fr
+          AWS_S3_BUCKET: ${{ steps.bucket.outputs.name }}
           AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
           AWS_S3_ENDPOINT: https://s3.fr-par.scw.cloud
@@ -187,10 +272,11 @@ jobs:
         with:
           script: |
             const apiUrl = '${{ needs.deploy-staging.outputs.api_url }}';
+            const frontendUrl = '${{ steps.bucket.outputs.url }}';
             const body = [
-              '## 🚀 Staging déployé',
+              '## Staging déployé',
               '',
-              `**Frontend** : [test.les577.fr](https://test.les577.fr)`,
+              `**Frontend** : [${frontendUrl}](${frontendUrl})`,
               `**API** : https://${apiUrl}/docs`,
               '',
               '_Ce commentaire est mis à jour à chaque push sur cette PR._',
