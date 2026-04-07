@@ -114,7 +114,9 @@ def _parse_zip(content: bytes) -> list[OrganeNormalise]:
             try:
                 data = json.loads(zf.read(name))
                 organe = data.get("organe", data)
-                if organe.get("codeType") != "GP":
+                # GP = groupes parlementaires, COMNL/COMPER/COMSPCOM = commissions
+                # On stocke tous les organes avec sigle+libelle valides
+                if not organe.get("codeType"):
                     continue
                 o = _normalise_organe(organe)
                 if o:
