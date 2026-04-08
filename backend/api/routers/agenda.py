@@ -23,16 +23,6 @@ class PointODJItem(BaseModel):
     titre: Optional[str]
 
 
-class ScrutinResume(BaseModel):
-    id: str
-    numero: int
-    titre: str
-    sort: Optional[str]
-    nombre_pours: Optional[int]
-    nombre_contres: Optional[int]
-    nombre_abstentions: Optional[int]
-
-
 class SeanceItem(BaseModel):
     id: str
     date: date
@@ -40,7 +30,6 @@ class SeanceItem(BaseModel):
     type_seance: Optional[str]
     is_senat: bool
     points_odj: list[PointODJItem]
-    scrutins: list[ScrutinResume]
 
 
 class ReunionItem(BaseModel):
@@ -84,10 +73,10 @@ async def get_agenda(
     if date_fin is None:
         date_fin = date_debut + timedelta(days=jours)
 
-    # Séances avec points ODJ et scrutins
+    # Séances avec points ODJ
     seances_stmt = (
         select(Seance)
-        .options(selectinload(Seance.points_odj), selectinload(Seance.scrutins))
+        .options(selectinload(Seance.points_odj))
         .where(Seance.date >= date_debut, Seance.date <= date_fin)
         .order_by(Seance.date, Seance.id)
     )
@@ -121,8 +110,6 @@ async def get_agenda(
                 "is_senat": s.is_senat,
                 "points_seen": set(),
                 "points_odj": [],
-                "scrutins_seen": set(),
-                "scrutins": [],
             }
         bucket = seances_fusionnees[key]
         for p in sorted(s.points_odj, key=lambda x: x.ordre or 0):
@@ -130,20 +117,6 @@ async def get_agenda(
             if titre_norm and titre_norm not in bucket["points_seen"]:
                 bucket["points_seen"].add(titre_norm)
                 bucket["points_odj"].append(PointODJItem(ordre=p.ordre, titre=p.titre))
-        for sc in sorted(s.scrutins, key=lambda x: x.numero):
-            if sc.id not in bucket["scrutins_seen"]:
-                bucket["scrutins_seen"].add(sc.id)
-                bucket["scrutins"].append(
-                    ScrutinResume(
-                        id=sc.id,
-                        numero=sc.numero,
-                        titre=sc.titre,
-                        sort=sc.sort,
-                        nombre_pours=sc.nombre_pours,
-                        nombre_contres=sc.nombre_contres,
-                        nombre_abstentions=sc.nombre_abstentions,
-                    )
-                )
 
     for key, bucket in seances_fusionnees.items():
         d = bucket["date"]
@@ -157,7 +130,6 @@ async def get_agenda(
                 type_seance=bucket["type_seance"],
                 is_senat=bucket["is_senat"],
                 points_odj=bucket["points_odj"],
-                scrutins=bucket["scrutins"],
             )
         )
 

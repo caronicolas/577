@@ -6,16 +6,6 @@
     titre: string | null;
   }
 
-  interface ScrutinResume {
-    id: string;
-    numero: number;
-    titre: string;
-    sort: string | null;
-    nombre_pours: number | null;
-    nombre_contres: number | null;
-    nombre_abstentions: number | null;
-  }
-
   interface Seance {
     id: string;
     date: string;
@@ -23,7 +13,6 @@
     type_seance: string | null;
     is_senat: boolean;
     points_odj: PointODJ[];
-    scrutins: ScrutinResume[];
   }
 
   interface Reunion {
@@ -45,8 +34,6 @@
 
   let jours = $state<JourAgenda[]>([]);
   let loading = $state(true);
-  let openScrutins = $state<Set<string>>(new Set());
-
   const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
     day: 'numeric',
@@ -63,24 +50,6 @@
   function formatHeure(h: string | null): string {
     if (!h) return '';
     return h.replace(':', 'h');
-  }
-
-  function toggleScrutin(id: string) {
-    const next = new Set(openScrutins);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    openScrutins = next;
-  }
-
-  function sortLabel(sort: string | null): string {
-    if (!sort) return '';
-    const s = sort.toLowerCase();
-    if (s.includes('adopt')) return 'Adopté';
-    if (s.includes('rejet')) return 'Rejeté';
-    return sort;
   }
 
   $effect(() => {
@@ -144,50 +113,6 @@
             </div>
           {/if}
 
-          {#if s.scrutins.length > 0}
-            <div class="section-block">
-              <div class="section-label">Scrutins</div>
-              <ul class="scrutins">
-                {#each s.scrutins as sc}
-                  {@const isOpen = openScrutins.has(sc.id)}
-                  {@const hasDecompte = sc.nombre_pours != null}
-                  <li class="scrutin-item">
-                    <button
-                      class="scrutin-header"
-                      class:scrutin-header--clickable={hasDecompte}
-                      onclick={() => hasDecompte && toggleScrutin(sc.id)}
-                      disabled={!hasDecompte}
-                      aria-expanded={isOpen}
-                    >
-                      <span class="scrutin-num">#{sc.numero}</span>
-                      <span class="scrutin-titre">{sc.titre}</span>
-                      {#if sc.sort}
-                        <span
-                          class="scrutin-sort"
-                          class:scrutin-sort--adopte={sc.sort.toLowerCase().includes('adopt')}
-                          class:scrutin-sort--rejete={sc.sort.toLowerCase().includes('rejet')}
-                        >{sortLabel(sc.sort)}</span>
-                      {/if}
-                      {#if hasDecompte}
-                        <span class="chevron" class:chevron--open={isOpen}>▸</span>
-                      {/if}
-                    </button>
-
-                    {#if isOpen}
-                      <div class="scrutin-details">
-                        <span class="decompte">
-                          <span class="pour">{sc.nombre_pours}✓</span>
-                          <span class="contre">{sc.nombre_contres}✗</span>
-                          {#if sc.nombre_abstentions}<span class="abst">{sc.nombre_abstentions}○</span>{/if}
-                        </span>
-                        <a href="/votes/{sc.id}" class="scrutin-link">Voir le détail →</a>
-                      </div>
-                    {/if}
-                  </li>
-                {/each}
-              </ul>
-            </div>
-          {/if}
         </div>
       {/each}
 
