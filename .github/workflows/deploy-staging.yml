@@ -28,7 +28,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
           AWS_DEFAULT_REGION: fr-par
         run: |
-          BUCKET="pr-${{ github.event.number }}.test.les577.fr"
+          BUCKET="pr-${{ github.event.number }}.les577.fr"
           aws s3 rb "s3://$BUCKET" --force \
             --endpoint-url https://s3.fr-par.scw.cloud \
             || echo "Bucket $BUCKET inexistant ou déjà supprimé."
@@ -221,8 +221,8 @@ jobs:
         id: bucket
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "name=pr-${{ github.event.number }}.test.les577.fr" >> "$GITHUB_OUTPUT"
-            echo "url=https://pr-${{ github.event.number }}.test.les577.fr" >> "$GITHUB_OUTPUT"
+            echo "name=pr-${{ github.event.number }}.les577.fr" >> "$GITHUB_OUTPUT"
+            echo "url=https://pr-${{ github.event.number }}.les577.fr" >> "$GITHUB_OUTPUT"
           else
             echo "name=test.les577.fr" >> "$GITHUB_OUTPUT"
             echo "url=https://test.les577.fr" >> "$GITHUB_OUTPUT"
