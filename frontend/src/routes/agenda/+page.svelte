@@ -45,7 +45,7 @@
 
   let jours = $state<JourAgenda[]>([]);
   let loading = $state(true);
-  let openSeances = $state<Set<string>>(new Set());
+  let openScrutins = $state<Set<string>>(new Set());
 
   const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
@@ -65,14 +65,14 @@
     return h.replace(':', 'h');
   }
 
-  function toggleSeance(id: string) {
-    const next = new Set(openSeances);
+  function toggleScrutin(id: string) {
+    const next = new Set(openScrutins);
     if (next.has(id)) {
       next.delete(id);
     } else {
       next.add(id);
     }
-    openSeances = next;
+    openScrutins = next;
   }
 
   function sortLabel(sort: string | null): string {
@@ -118,80 +118,74 @@
       <h2 class="jour-date">{formatDate(jour.date)}</h2>
 
       {#each jour.seances as s (s.id)}
-        {@const isOpen = openSeances.has(s.id)}
-        {@const hasDetails = s.points_odj.length > 0 || s.scrutins.length > 0}
-        <div class="event event--seance" class:event--senat={s.is_senat}>
-          <button
-            class="event-header"
-            class:event-header--clickable={hasDetails}
-            onclick={() => hasDetails && toggleSeance(s.id)}
-            aria-expanded={isOpen}
-            disabled={!hasDetails}
-          >
-            <span class="event-type">{s.is_senat ? 'Sénat' : 'Séance AN'}</span>
+        <div class="seance-section" class:seance-section--senat={s.is_senat}>
+          <div class="seance-header">
+            <span class="seance-badge" class:seance-badge--senat={s.is_senat}>
+              {s.is_senat ? 'Sénat' : 'Séance AN'}
+            </span>
             {#if s.titre}
-              <span class="event-titre">{s.titre}</span>
+              <span class="seance-titre">{s.titre}</span>
             {/if}
-            {#if hasDetails}
-              <span class="event-meta">
-                {#if s.points_odj.length > 0}
-                  <span class="meta-chip">{s.points_odj.length} point{s.points_odj.length > 1 ? 's' : ''}</span>
-                {/if}
-                {#if s.scrutins.length > 0}
-                  <span class="meta-chip meta-chip--vote">{s.scrutins.length} vote{s.scrutins.length > 1 ? 's' : ''}</span>
-                {/if}
-              </span>
-              <span class="chevron" class:chevron--open={isOpen}>▸</span>
-            {/if}
-          </button>
+          </div>
 
-          {#if isOpen}
-            <div class="details">
-              {#if s.points_odj.length > 0}
-                <div class="details-section">
-                  <div class="details-label">Ordre du jour</div>
-                  <ul class="odj">
-                    {#each s.points_odj as p}
-                      {#if p.titre}
-                        <li class="odj-item">
-                          {#if p.ordre != null}<span class="odj-num">{p.ordre}.</span>{/if}
-                          {p.titre}
-                        </li>
+          {#if s.points_odj.length > 0}
+            <div class="section-block">
+              <div class="section-label">Ordre du jour</div>
+              <ul class="odj">
+                {#each s.points_odj as p}
+                  {#if p.titre}
+                    <li class="odj-item">
+                      {#if p.ordre != null}<span class="odj-num">{p.ordre}.</span>{/if}
+                      <span>{p.titre}</span>
+                    </li>
+                  {/if}
+                {/each}
+              </ul>
+            </div>
+          {/if}
+
+          {#if s.scrutins.length > 0}
+            <div class="section-block">
+              <div class="section-label">Scrutins</div>
+              <ul class="scrutins">
+                {#each s.scrutins as sc}
+                  {@const isOpen = openScrutins.has(sc.id)}
+                  {@const hasDecompte = sc.nombre_pours != null}
+                  <li class="scrutin-item">
+                    <button
+                      class="scrutin-header"
+                      class:scrutin-header--clickable={hasDecompte}
+                      onclick={() => hasDecompte && toggleScrutin(sc.id)}
+                      disabled={!hasDecompte}
+                      aria-expanded={isOpen}
+                    >
+                      <span class="scrutin-num">#{sc.numero}</span>
+                      <span class="scrutin-titre">{sc.titre}</span>
+                      {#if sc.sort}
+                        <span
+                          class="scrutin-sort"
+                          class:scrutin-sort--adopte={sc.sort.toLowerCase().includes('adopt')}
+                          class:scrutin-sort--rejete={sc.sort.toLowerCase().includes('rejet')}
+                        >{sortLabel(sc.sort)}</span>
                       {/if}
-                    {/each}
-                  </ul>
-                </div>
-              {/if}
+                      {#if hasDecompte}
+                        <span class="chevron" class:chevron--open={isOpen}>▸</span>
+                      {/if}
+                    </button>
 
-              {#if s.scrutins.length > 0}
-                <div class="details-section">
-                  <div class="details-label">Scrutins</div>
-                  <ul class="scrutins">
-                    {#each s.scrutins as sc}
-                      <li class="scrutin-item">
-                        <a href="/votes/{sc.id}" class="scrutin-link">
-                          <span class="scrutin-num">#{sc.numero}</span>
-                          <span class="scrutin-titre">{sc.titre}</span>
-                          {#if sc.sort}
-                            <span
-                              class="scrutin-sort"
-                              class:scrutin-sort--adopte={sc.sort.toLowerCase().includes('adopt')}
-                              class:scrutin-sort--rejete={sc.sort.toLowerCase().includes('rejet')}
-                            >{sortLabel(sc.sort)}</span>
-                          {/if}
-                        </a>
-                        {#if sc.nombre_pours != null}
-                          <span class="scrutin-decompte">
-                            <span class="pour">{sc.nombre_pours}✓</span>
-                            <span class="contre">{sc.nombre_contres}✗</span>
-                            {#if sc.nombre_abstentions}<span class="abst">{sc.nombre_abstentions}○</span>{/if}
-                          </span>
-                        {/if}
-                      </li>
-                    {/each}
-                  </ul>
-                </div>
-              {/if}
+                    {#if isOpen}
+                      <div class="scrutin-details">
+                        <span class="decompte">
+                          <span class="pour">{sc.nombre_pours}✓</span>
+                          <span class="contre">{sc.nombre_contres}✗</span>
+                          {#if sc.nombre_abstentions}<span class="abst">{sc.nombre_abstentions}○</span>{/if}
+                        </span>
+                        <a href="/votes/{sc.id}" class="scrutin-link">Voir le détail →</a>
+                      </div>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
             </div>
           {/if}
         </div>
@@ -253,59 +247,32 @@
     margin-bottom: 0.75rem;
   }
 
-  .event {
+  /* Séance */
+  .seance-section {
+    border-left: 3px solid var(--color-vote);
     padding: 0.6rem 0.75rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
+    border-left-width: 3px;
     background: var(--color-surface);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     font-size: 0.875rem;
   }
 
-  .event--seance {
-    border-left: 3px solid var(--color-vote);
-  }
-
-  .event--commission {
-    border-left: 3px solid var(--color-commission);
-    padding: 0.4rem 0.75rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .event--senat.event--seance {
+  .seance-section--senat {
     border-left-color: #a0aec0;
     opacity: 0.85;
   }
 
-  .event--senat.event--commission {
-    border-left-color: #a0aec0;
-    opacity: 0.85;
-  }
-
-  .event-header {
+  .seance-header {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem;
-    width: 100%;
-    background: none;
-    border: none;
-    padding: 0;
-    text-align: left;
-    color: inherit;
-    font: inherit;
-    cursor: default;
+    margin-bottom: 0.75rem;
   }
 
-  .event-header--clickable {
-    cursor: pointer;
-  }
-
-  .event-header--clickable:hover .event-type {
-    opacity: 0.85;
-  }
-
-  .event-type {
+  .seance-badge {
     font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -317,67 +284,35 @@
     flex-shrink: 0;
   }
 
-  .event-type--senat {
+  .seance-badge--senat {
     background: #a0aec0;
   }
 
-  .event-titre {
+  .seance-titre {
     color: var(--color-text-muted);
     font-size: 0.8rem;
   }
 
-  .event-meta {
-    display: flex;
-    gap: 0.3rem;
-    margin-left: auto;
-    align-items: center;
+  /* Blocs ODJ / scrutins */
+  .section-block {
+    margin-bottom: 0.75rem;
   }
 
-  .meta-chip {
-    font-size: 0.68rem;
-    color: var(--color-text-muted);
-    background: var(--color-border);
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
-  }
-
-  .meta-chip--vote {
-    background: color-mix(in srgb, var(--color-vote) 15%, transparent);
-    color: var(--color-vote);
-  }
-
-  .chevron {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    transition: transform 0.15s;
-    flex-shrink: 0;
-  }
-
-  .chevron--open {
-    transform: rotate(90deg);
-  }
-
-  .details {
-    margin-top: 0.6rem;
-    border-top: 1px solid var(--color-border);
-    padding-top: 0.5rem;
-  }
-
-  .details-section + .details-section {
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
+  .section-block + .section-block {
+    padding-top: 0.6rem;
     border-top: 1px solid var(--color-border);
   }
 
-  .details-label {
+  .section-label {
     font-size: 0.68rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-muted);
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.35rem;
   }
 
+  /* ODJ */
   .odj {
     list-style: none;
     margin: 0;
@@ -402,6 +337,7 @@
     min-width: 18px;
   }
 
+  /* Scrutins */
   .scrutins {
     list-style: none;
     margin: 0;
@@ -409,25 +345,29 @@
   }
 
   .scrutin-item {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-    padding: 0.25rem 0;
     border-top: 1px solid var(--color-border);
-    flex-wrap: wrap;
   }
 
-  .scrutin-link {
+  .scrutin-header {
     display: flex;
     align-items: baseline;
     gap: 0.4rem;
-    flex: 1;
-    min-width: 0;
-    text-decoration: none;
+    width: 100%;
+    padding: 0.3rem 0;
+    background: none;
+    border: none;
+    text-align: left;
     color: inherit;
+    font: inherit;
+    cursor: default;
+    flex-wrap: wrap;
   }
 
-  .scrutin-link:hover .scrutin-titre {
+  .scrutin-header--clickable {
+    cursor: pointer;
+  }
+
+  .scrutin-header--clickable:hover .scrutin-titre {
     text-decoration: underline;
   }
 
@@ -441,6 +381,8 @@
   .scrutin-titre {
     font-size: 0.8rem;
     color: var(--color-text);
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -466,17 +408,88 @@
     color: #9b2c2c;
   }
 
-  .scrutin-decompte {
+  .chevron {
     font-size: 0.72rem;
-    font-family: var(--font-mono);
-    display: flex;
-    gap: 0.4rem;
+    color: var(--color-text-muted);
+    transition: transform 0.15s;
     flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .chevron--open {
+    transform: rotate(90deg);
+  }
+
+  .scrutin-details {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.3rem 0 0.4rem 0;
+    font-size: 0.8rem;
+  }
+
+  .decompte {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
   }
 
   .pour { color: #38a169; }
   .contre { color: #e53e3e; }
   .abst { color: var(--color-text-muted); }
+
+  .scrutin-link {
+    font-size: 0.78rem;
+    color: var(--color-vote);
+    text-decoration: none;
+  }
+
+  .scrutin-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Commissions */
+  .event {
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    margin-bottom: 0.35rem;
+    font-size: 0.875rem;
+  }
+
+  .event--commission {
+    border-left: 3px solid var(--color-commission);
+  }
+
+  .event--senat {
+    border-left-color: #a0aec0;
+    opacity: 0.85;
+  }
+
+  .event-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .event-type {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--color-vote);
+    color: #fff;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .event-type--senat {
+    background: #a0aec0;
+  }
 
   .event-heure {
     font-family: var(--font-mono);
