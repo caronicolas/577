@@ -67,6 +67,17 @@
     return Math.round(Math.min(Math.max(val, 0), 1) * 100);
   }
 
+  // women_pct est déjà en % (0-100), contrairement aux scores Datan (0-1)
+  function pctDirect(val: number | null): string {
+    if (val == null) return '—';
+    return Math.round(val) + ' %';
+  }
+
+  function widthDirect(val: number | null): number {
+    if (val == null) return 0;
+    return Math.round(Math.min(Math.max(val, 0), 100));
+  }
+
   function age(val: number | null): string {
     if (val == null) return '—';
     return Math.round(val) + ' ans';
@@ -160,9 +171,9 @@
 
         <div class="stat-card">
           <span class="stat-label">Parité femmes</span>
-          <span class="stat-value">{pct(groupe.datan.women_pct)}</span>
+          <span class="stat-value">{pctDirect(groupe.datan.women_pct)}</span>
           <div class="jauge-track">
-            <div class="jauge-bar" style="width: {width(groupe.datan.women_pct)}%; background: {groupe.couleur ?? 'var(--color-vote)'}"></div>
+            <div class="jauge-bar" style="width: {widthDirect(groupe.datan.women_pct)}%; background: {groupe.couleur ?? 'var(--color-vote)'}"></div>
           </div>
           <p class="stat-desc">Part des femmes dans le groupe</p>
         </div>
