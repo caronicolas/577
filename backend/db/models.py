@@ -26,7 +26,7 @@ class Organe(Base):
 
     id: Mapped[str] = mapped_column(String(50), primary_key=True)  # ex: PO800520
     sigle: Mapped[str] = mapped_column(String(20))
-    libelle: Mapped[str] = mapped_column(String(200))
+    libelle: Mapped[str] = mapped_column(String(500))
     couleur: Mapped[Optional[str]] = mapped_column(String(7))  # hex #rrggbb
     legislature: Mapped[int] = mapped_column(Integer, default=17)
     updated_at: Mapped[datetime] = mapped_column(
