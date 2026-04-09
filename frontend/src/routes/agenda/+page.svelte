@@ -34,7 +34,6 @@
 
   let jours = $state<JourAgenda[]>([]);
   let loading = $state(true);
-
   const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
     day: 'numeric',
@@ -50,7 +49,6 @@
 
   function formatHeure(h: string | null): string {
     if (!h) return '';
-    // Normaliser format HHhMM ou HH:MM
     return h.replace(':', 'h');
   }
 
@@ -89,25 +87,32 @@
       <h2 class="jour-date">{formatDate(jour.date)}</h2>
 
       {#each jour.seances as s (s.id)}
-        <div class="event event--seance" class:event--senat={s.is_senat}>
-          <div class="event-header">
-            <span class="event-type">{s.is_senat ? 'Sénat' : 'Séance AN'}</span>
+        <div class="seance-section" class:seance-section--senat={s.is_senat}>
+          <div class="seance-header">
+            <span class="seance-badge" class:seance-badge--senat={s.is_senat}>
+              {s.is_senat ? 'Sénat' : 'Séance AN'}
+            </span>
             {#if s.titre}
-              <span class="event-titre">{s.titre}</span>
+              <span class="seance-titre">{s.titre}</span>
             {/if}
           </div>
+
           {#if s.points_odj.length > 0}
-            <ul class="odj">
-              {#each s.points_odj as p}
-                {#if p.titre}
-                  <li class="odj-item">
-                    {#if p.ordre != null}<span class="odj-num">{p.ordre}.</span>{/if}
-                    {p.titre}
-                  </li>
-                {/if}
-              {/each}
-            </ul>
+            <div class="section-block">
+              <div class="section-label">Ordre du jour</div>
+              <ul class="odj">
+                {#each s.points_odj as p}
+                  {#if p.titre}
+                    <li class="odj-item">
+                      {#if p.ordre != null}<span class="odj-num">{p.ordre}.</span>{/if}
+                      <span>{p.titre}</span>
+                    </li>
+                  {/if}
+                {/each}
+              </ul>
+            </div>
           {/if}
+
         </div>
       {/each}
 
@@ -167,31 +172,223 @@
     margin-bottom: 0.75rem;
   }
 
-  .event {
+  /* Séance */
+  .seance-section {
+    border-left: 3px solid var(--color-vote);
     padding: 0.6rem 0.75rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
+    border-left-width: 3px;
     background: var(--color-surface);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     font-size: 0.875rem;
   }
 
-  .event--seance {
-    border-left: 3px solid var(--color-vote);
-  }
-
-  .event--commission {
-    border-left: 3px solid var(--color-commission);
-    padding: 0.4rem 0.75rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .event--senat.event--seance {
+  .seance-section--senat {
     border-left-color: #a0aec0;
     opacity: 0.85;
   }
 
-  .event--senat.event--commission {
+  .seance-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .seance-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--color-vote);
+    color: #fff;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .seance-badge--senat {
+    background: #a0aec0;
+  }
+
+  .seance-titre {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+
+  /* Blocs ODJ / scrutins */
+  .section-block {
+    margin-bottom: 0.75rem;
+  }
+
+  .section-block + .section-block {
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.35rem;
+  }
+
+  /* ODJ */
+  .odj {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .odj-item {
+    display: flex;
+    gap: 0.4rem;
+    align-items: baseline;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    padding: 0.2rem 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .odj-num {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-vote);
+    flex-shrink: 0;
+    min-width: 18px;
+  }
+
+  /* Scrutins */
+  .scrutins {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .scrutin-item {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .scrutin-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.3rem 0;
+    background: none;
+    border: none;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: default;
+    flex-wrap: wrap;
+  }
+
+  .scrutin-header--clickable {
+    cursor: pointer;
+  }
+
+  .scrutin-header--clickable:hover .scrutin-titre {
+    text-decoration: underline;
+  }
+
+  .scrutin-num {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-vote);
+    flex-shrink: 0;
+  }
+
+  .scrutin-titre {
+    font-size: 0.8rem;
+    color: var(--color-text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scrutin-sort {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: var(--color-border);
+    color: var(--color-text-muted);
+  }
+
+  .scrutin-sort--adopte {
+    background: #c6f6d5;
+    color: #276749;
+  }
+
+  .scrutin-sort--rejete {
+    background: #fed7d7;
+    color: #9b2c2c;
+  }
+
+  .chevron {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    transition: transform 0.15s;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .chevron--open {
+    transform: rotate(90deg);
+  }
+
+  .scrutin-details {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.3rem 0 0.4rem 0;
+    font-size: 0.8rem;
+  }
+
+  .decompte {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .pour { color: #38a169; }
+  .contre { color: #e53e3e; }
+  .abst { color: var(--color-text-muted); }
+
+  .scrutin-link {
+    font-size: 0.78rem;
+    color: var(--color-vote);
+    text-decoration: none;
+  }
+
+  .scrutin-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Commissions */
+  .event {
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    margin-bottom: 0.35rem;
+    font-size: 0.875rem;
+  }
+
+  .event--commission {
+    border-left: 3px solid var(--color-commission);
+  }
+
+  .event--senat {
     border-left-color: #a0aec0;
     opacity: 0.85;
   }
@@ -219,11 +416,6 @@
     background: #a0aec0;
   }
 
-  .event-titre {
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-  }
-
   .event-heure {
     font-family: var(--font-mono);
     font-size: 0.75rem;
@@ -241,30 +433,6 @@
     color: var(--color-text-muted);
     font-size: 0.8rem;
     font-style: italic;
-  }
-
-  .odj {
-    list-style: none;
-    margin-top: 0.5rem;
-    padding-left: 0;
-  }
-
-  .odj-item {
-    display: flex;
-    gap: 0.4rem;
-    align-items: baseline;
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-    padding: 0.15rem 0;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .odj-num {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--color-vote);
-    flex-shrink: 0;
-    min-width: 18px;
   }
 
   .commissions-groupe {

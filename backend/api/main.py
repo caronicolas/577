@@ -52,6 +52,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://les577.fr", "https://www.les577.fr"],
+    allow_origin_regex=r"https://.*\.les577\.fr",
     allow_methods=["GET"],
     allow_headers=["*"],
 )

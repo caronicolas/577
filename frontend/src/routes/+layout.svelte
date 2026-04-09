@@ -118,6 +118,13 @@
     </a>
     — Licence ODbL
   </p>
+  <p>
+    Scores de participation et de cohésion :
+    <a href="https://www.data.gouv.fr/fr/organizations/datan/" rel="noopener noreferrer" target="_blank">
+      Datan
+    </a>
+    via data.gouv.fr — Licence Ouverte
+  </p>
 </footer>
 
 <style>
