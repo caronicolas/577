@@ -187,11 +187,11 @@
           <div class="stat-card">
             <span class="stat-label">Positionnement politique</span>
             <div class="spectrum">
-              <span class="spectrum-end">Droite</span>
-              <div class="spectrum-track">
-                <div class="spectrum-marker" style="left: {rosePosition(groupe.datan.score_rose)}%"></div>
-              </div>
               <span class="spectrum-end">Gauche</span>
+              <div class="spectrum-track">
+                <div class="spectrum-marker" style="left: {100 - rosePosition(groupe.datan.score_rose)}%"></div>
+              </div>
+              <span class="spectrum-end">Droite</span>
             </div>
             <p class="stat-desc">Score rose : proximité avec la gauche ({Math.round((groupe.datan.score_rose ?? 0) * 100)} %)</p>
           </div>
@@ -389,7 +389,7 @@
   .spectrum-track {
     flex: 1;
     height: 6px;
-    background: linear-gradient(to right, #2563eb, #d1d5db, #dc2626);
+    background: linear-gradient(to right, #dc2626, #d1d5db, #2563eb);
     border-radius: 3px;
     position: relative;
   }
