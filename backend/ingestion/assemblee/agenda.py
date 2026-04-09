@@ -239,7 +239,15 @@ def parse_reunion_commission(data: dict) -> Optional[ReunionCommissionNorm]:
     # Points ODJ pour avoir le titre de la réunion
     odj = reunion.get("ODJ") or {}
     resume_odj = odj.get("resumeODJ")
-    if isinstance(resume_odj, dict):
+    if isinstance(resume_odj, list):
+        # Prendre le premier item non vide, supprimer les préfixes "- "
+        titre = None
+        for item in resume_odj:
+            s = _safe_str(str(item).lstrip("- ").strip("'\""))
+            if s:
+                titre = s
+                break
+    elif isinstance(resume_odj, dict):
         first_val = next(iter(resume_odj.values()), None)
         titre = _safe_str(resume_odj.get("#text") or first_val)
     else:
@@ -256,7 +264,7 @@ def parse_reunion_commission(data: dict) -> Optional[ReunionCommissionNorm]:
         heure_fin=heure_fin,
         titre=titre,
         organe_id=organe_id,
-        organe_libelle=None,  # résolu via JOIN organes en frontend
+        organe_libelle=None,  # résolu lors de l'upsert depuis le dict organes
         is_senat=is_senat,
         legislature=LEGISLATURE,
         depute_ids=depute_ids,
@@ -329,13 +337,14 @@ async def upsert_reunions(
     conn: psycopg.AsyncConnection,
     reunions: list[ReunionCommissionNorm],
     known_depute_ids: set[str],
-    known_organe_ids: set[str],
+    organes: dict[str, str],  # id -> libelle
 ) -> None:
     if not reunions:
         return
     for r in reunions:
         # Vérifier que l'organe existe avant d'insérer la FK
-        organe_id = r.organe_id if r.organe_id in known_organe_ids else None
+        organe_id = r.organe_id if r.organe_id in organes else None
+        organe_libelle = organes.get(r.organe_id) if r.organe_id else None
         await conn.execute(
             """
             INSERT INTO reunions_commission
@@ -359,7 +368,7 @@ async def upsert_reunions(
                 r.heure_fin,
                 r.titre,
                 organe_id,
-                r.organe_libelle,
+                organe_libelle,
                 r.is_senat,
                 r.legislature,
             ),
@@ -415,8 +424,9 @@ async def run() -> None:
         depute_ids = {
             row[0] async for row in await conn.execute("SELECT id FROM deputes")
         }
-        organe_ids = {
-            row[0] async for row in await conn.execute("SELECT id FROM organes")
+        organes = {
+            row[0]: row[1]
+            async for row in await conn.execute("SELECT id, libelle FROM organes")
         }
 
         async with conn.transaction():
@@ -427,7 +437,7 @@ async def run() -> None:
         for i in range(0, len(reunions), BATCH):
             batch = reunions[i : i + BATCH]
             async with conn.transaction():
-                await upsert_reunions(conn, batch, depute_ids, organe_ids)
+                await upsert_reunions(conn, batch, depute_ids, organes)
             logger.info(
                 "Réunions insérées : %d/%d",
                 min(i + BATCH, len(reunions)),
