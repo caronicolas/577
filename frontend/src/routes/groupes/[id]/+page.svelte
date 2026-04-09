@@ -92,11 +92,6 @@
     return luminance > 0.55 ? '#111' : '#fff';
   }
 
-  // score_rose : proximité gauche (0 = droite, 1 = gauche)
-  function rosePosition(val: number | null): number {
-    if (val == null) return 50;
-    return Math.round(Math.min(Math.max(val, 0), 1) * 100);
-  }
 </script>
 
 <svelte:head>
@@ -183,19 +178,6 @@
           <span class="stat-value">{age(groupe.datan.age_moyen)}</span>
         </div>
 
-        {#if groupe.datan.score_rose != null}
-          <div class="stat-card">
-            <span class="stat-label">Positionnement politique</span>
-            <div class="spectrum">
-              <span class="spectrum-end">Gauche</span>
-              <div class="spectrum-track">
-                <div class="spectrum-marker" style="left: {100 - rosePosition(groupe.datan.score_rose)}%"></div>
-              </div>
-              <span class="spectrum-end">Droite</span>
-            </div>
-            <p class="stat-desc">Score rose : proximité avec la gauche ({Math.round((groupe.datan.score_rose ?? 0) * 100)} %)</p>
-          </div>
-        {/if}
 
       </div>
       <p class="source">
@@ -372,38 +354,6 @@
     line-height: 1.4;
   }
 
-  /* Spectrum */
-  .spectrum {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0.25rem 0;
-  }
-
-  .spectrum-end {
-    font-size: 0.7rem;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-  }
-
-  .spectrum-track {
-    flex: 1;
-    height: 6px;
-    background: linear-gradient(to right, #dc2626, #d1d5db, #2563eb);
-    border-radius: 3px;
-    position: relative;
-  }
-
-  .spectrum-marker {
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 12px;
-    height: 12px;
-    background: var(--color-surface);
-    border: 2px solid var(--color-text);
-    border-radius: 50%;
-  }
 
   .source {
     font-size: 0.7rem;
