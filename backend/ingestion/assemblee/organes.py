@@ -11,11 +11,11 @@ import logging
 import os
 import zipfile
 from typing import Optional
+from urllib.parse import unquote
 
 import httpx
+import psycopg
 from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -141,42 +141,70 @@ async def fetch_all_organes() -> list[OrganeNormalise]:
 
 
 # ---------------------------------------------------------------------------
+# Connexion DB (psycopg3 — même pattern que deputes.py)
+# ---------------------------------------------------------------------------
+
+
+def _get_conn_params() -> dict:
+    """Parse DATABASE_URL → kwargs pour psycopg.AsyncConnection.connect()."""
+    url = DATABASE_URL
+    url = url.split("://", 1)[1]  # retire le schème complet
+
+    at = url.rfind("@")
+    userinfo = url[:at]
+    hostinfo = url[at + 1 :]
+
+    if ":" in userinfo:
+        user, password = userinfo.split(":", 1)
+    else:
+        user, password = userinfo, ""
+
+    slash = hostinfo.find("/")
+    if slash >= 0:
+        hostport, dbname_raw = hostinfo[:slash], hostinfo[slash + 1 :]
+    else:
+        hostport, dbname_raw = hostinfo, ""
+
+    dbname = dbname_raw.split("?", 1)[0]
+
+    if ":" in hostport:
+        colon = hostport.rfind(":")
+        host, port = hostport[:colon], int(hostport[colon + 1 :])
+    else:
+        host, port = hostport, 5432
+
+    return {
+        "host": host,
+        "port": port,
+        "dbname": dbname,
+        "user": unquote(user),
+        "password": unquote(password),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT = text(
-    """
+_UPSERT = """
     INSERT INTO organes (id, sigle, libelle, couleur, legislature, updated_at)
-    VALUES (:id, :sigle, :libelle, :couleur, :legislature, now())
+    VALUES (%(id)s, %(sigle)s, %(libelle)s, %(couleur)s, %(legislature)s, now())
     ON CONFLICT (id) DO UPDATE SET
-        sigle      = EXCLUDED.sigle,
-        libelle    = EXCLUDED.libelle,
-        couleur    = EXCLUDED.couleur,
+        sigle       = EXCLUDED.sigle,
+        libelle     = EXCLUDED.libelle,
+        couleur     = EXCLUDED.couleur,
         legislature = EXCLUDED.legislature,
-        updated_at = now()
+        updated_at  = now()
 """
-)
-
-
-def _asyncpg_url(url: str) -> str:
-    """Normalise l'URL pour asyncpg (postgres:// ou postgresql:// → postgresql+asyncpg://)."""
-    if url.startswith("postgres://"):
-        return "postgresql+asyncpg://" + url[len("postgres://") :]
-    if url.startswith("postgresql://"):
-        return "postgresql+asyncpg://" + url[len("postgresql://") :]
-    return url
 
 
 async def upsert_organes(organes: list[OrganeNormalise]) -> int:
-    engine = create_async_engine(_asyncpg_url(DATABASE_URL), pool_pre_ping=True)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
-
-    async with Session() as session:
-        async with session.begin():
+    async with await psycopg.AsyncConnection.connect(
+        **_get_conn_params(), autocommit=False
+    ) as conn:
+        async with conn.transaction():
             for organe in organes:
-                await session.execute(_UPSERT, organe.model_dump())
-
-    await engine.dispose()
+                await conn.execute(_UPSERT, organe.model_dump())
     return len(organes)
 
 
