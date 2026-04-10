@@ -156,10 +156,10 @@ _UPSERT = """
 
 
 async def upsert_organes(organes: list[OrganeNormalise]) -> int:
-    # psycopg3 accepte nativement les URLs (postgresql://...) et les
-    # connection strings libpq (host=... dbname=...) — pas besoin de parser.
+    # psycopg3 n'accepte pas le +asyncpg dans le schème (format SQLAlchemy).
+    conninfo = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
     async with await psycopg.AsyncConnection.connect(
-        DATABASE_URL, autocommit=False
+        conninfo, autocommit=False
     ) as conn:
         async with conn.transaction():
             for organe in organes:
