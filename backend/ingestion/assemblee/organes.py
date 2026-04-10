@@ -11,7 +11,6 @@ import logging
 import os
 import zipfile
 from typing import Optional
-from urllib.parse import unquote
 
 import httpx
 import psycopg
@@ -141,48 +140,6 @@ async def fetch_all_organes() -> list[OrganeNormalise]:
 
 
 # ---------------------------------------------------------------------------
-# Connexion DB (psycopg3 — même pattern que deputes.py)
-# ---------------------------------------------------------------------------
-
-
-def _get_conn_params() -> dict:
-    """Parse DATABASE_URL → kwargs pour psycopg.AsyncConnection.connect()."""
-    url = DATABASE_URL
-    url = url.split("://", 1)[1]  # retire le schème complet
-
-    at = url.rfind("@")
-    userinfo = url[:at]
-    hostinfo = url[at + 1 :]
-
-    if ":" in userinfo:
-        user, password = userinfo.split(":", 1)
-    else:
-        user, password = userinfo, ""
-
-    slash = hostinfo.find("/")
-    if slash >= 0:
-        hostport, dbname_raw = hostinfo[:slash], hostinfo[slash + 1 :]
-    else:
-        hostport, dbname_raw = hostinfo, ""
-
-    dbname = dbname_raw.split("?", 1)[0]
-
-    if ":" in hostport:
-        colon = hostport.rfind(":")
-        host, port = hostport[:colon], int(hostport[colon + 1 :])
-    else:
-        host, port = hostport, 5432
-
-    return {
-        "host": host,
-        "port": port,
-        "dbname": dbname,
-        "user": unquote(user),
-        "password": unquote(password),
-    }
-
-
-# ---------------------------------------------------------------------------
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
@@ -199,8 +156,10 @@ _UPSERT = """
 
 
 async def upsert_organes(organes: list[OrganeNormalise]) -> int:
+    # psycopg3 accepte nativement les URLs (postgresql://...) et les
+    # connection strings libpq (host=... dbname=...) — pas besoin de parser.
     async with await psycopg.AsyncConnection.connect(
-        **_get_conn_params(), autocommit=False
+        DATABASE_URL, autocommit=False
     ) as conn:
         async with conn.transaction():
             for organe in organes:
