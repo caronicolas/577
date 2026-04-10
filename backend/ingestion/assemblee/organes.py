@@ -158,8 +158,17 @@ _UPSERT = text(
 )
 
 
+def _asyncpg_url(url: str) -> str:
+    """Normalise l'URL pour asyncpg (postgres:// ou postgresql:// → postgresql+asyncpg://)."""
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://") :]
+    return url
+
+
 async def upsert_organes(organes: list[OrganeNormalise]) -> int:
-    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    engine = create_async_engine(_asyncpg_url(DATABASE_URL), pool_pre_ping=True)
     Session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with Session() as session:
