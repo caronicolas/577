@@ -28,12 +28,12 @@ jobs:
       - name: Type check
         run: npm run check
         env:
-          PUBLIC_API_BASE_URL: https://api.les577.fr
+          VITE_API_BASE_URL: https://api.les577.fr
 
       - name: Build
         run: npm run build
         env:
-          PUBLIC_API_BASE_URL: https://api.les577.fr
+          VITE_API_BASE_URL: https://api.les577.fr
 
       - name: Deploy to Scaleway Object Storage
         uses: jakejarvis/s3-sync-action@v0.5.1

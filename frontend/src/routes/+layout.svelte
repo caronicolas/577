@@ -6,6 +6,7 @@
   const navLinks = [
     { href: '/', label: 'Hémicycle' },
     { href: '/deputes', label: 'Députés' },
+    { href: '/groupes', label: 'Groupes' },
     { href: '/votes', label: 'Votes' },
     { href: '/agenda', label: 'Agenda' },
   ];
@@ -61,7 +62,7 @@
     <ul class="nav-desktop">
       {#each navLinks as link}
         <li>
-          <a href={link.href} class:active={$page.url.pathname === link.href}>
+          <a href={link.href} class:active={link.href === '/' ? $page.url.pathname === '/' : $page.url.pathname.startsWith(link.href)}>
             {link.label}
           </a>
         </li>
@@ -88,7 +89,7 @@
     <ul class="nav-mobile">
       {#each navLinks as link}
         <li>
-          <a href={link.href} class:active={$page.url.pathname === link.href} onclick={closeMenu}>
+          <a href={link.href} class:active={link.href === '/' ? $page.url.pathname === '/' : $page.url.pathname.startsWith(link.href)} onclick={closeMenu}>
             {link.label}
           </a>
         </li>
