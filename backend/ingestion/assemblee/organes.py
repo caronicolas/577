@@ -13,8 +13,9 @@ import zipfile
 from typing import Optional
 
 import httpx
-import psycopg
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -143,27 +144,30 @@ async def fetch_all_organes() -> list[OrganeNormalise]:
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT = """
+_UPSERT = text(
+    """
     INSERT INTO organes (id, sigle, libelle, couleur, legislature, updated_at)
-    VALUES (%(id)s, %(sigle)s, %(libelle)s, %(couleur)s, %(legislature)s, now())
+    VALUES (:id, :sigle, :libelle, :couleur, :legislature, now())
     ON CONFLICT (id) DO UPDATE SET
-        sigle       = EXCLUDED.sigle,
-        libelle     = EXCLUDED.libelle,
-        couleur     = EXCLUDED.couleur,
+        sigle      = EXCLUDED.sigle,
+        libelle    = EXCLUDED.libelle,
+        couleur    = EXCLUDED.couleur,
         legislature = EXCLUDED.legislature,
-        updated_at  = now()
+        updated_at = now()
 """
+)
 
 
 async def upsert_organes(organes: list[OrganeNormalise]) -> int:
-    # psycopg3 n'accepte pas le +asyncpg dans le schème (format SQLAlchemy).
-    conninfo = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
-    async with await psycopg.AsyncConnection.connect(
-        conninfo, autocommit=False
-    ) as conn:
-        async with conn.transaction():
+    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    Session = async_sessionmaker(engine, expire_on_commit=False)
+
+    async with Session() as session:
+        async with session.begin():
             for organe in organes:
-                await conn.execute(_UPSERT, organe.model_dump())
+                await session.execute(_UPSERT, organe.model_dump())
+
+    await engine.dispose()
     return len(organes)
 
 
