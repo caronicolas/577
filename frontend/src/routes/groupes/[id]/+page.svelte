@@ -155,14 +155,6 @@
           <p class="stat-desc">Taux de présence moyen aux scrutins solennels</p>
         </div>
 
-        <div class="stat-card">
-          <span class="stat-label">Proximité majorité</span>
-          <span class="stat-value">{pct(groupe.datan.score_majorite)}</span>
-          <div class="jauge-track">
-            <div class="jauge-bar" style="width: {width(groupe.datan.score_majorite)}%; background: {groupe.couleur ?? 'var(--color-vote)'}"></div>
-          </div>
-          <p class="stat-desc">Alignement avec la majorité présidentielle</p>
-        </div>
 
         <div class="stat-card">
           <span class="stat-label">Parité femmes</span>
