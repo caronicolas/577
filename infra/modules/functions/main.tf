@@ -41,6 +41,34 @@ resource "scaleway_function_cron" "scrutins_daily" {
   args        = jsonencode({ type = "scrutins" })
 }
 
+resource "scaleway_function" "ingest_organes" {
+  name         = "ingest-organes"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "organes.handle"
+  privacy      = "private"
+  timeout      = 300
+  max_scale    = 1
+  memory_limit = 256
+  zip_file     = "functions/organes.zip"
+  zip_hash     = try(filesha256("functions/organes.zip"), "")
+  deploy       = true
+
+  environment_variables = {
+    ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
+  }
+
+  secret_environment_variables = {
+    DATABASE_URL = var.database_url
+  }
+}
+
+resource "scaleway_function_cron" "organes_weekly" {
+  function_id = scaleway_function.ingest_organes.id
+  schedule    = "0 4 * * 0" # Dimanche 04:00 UTC (avant deputes lundi 05:00)
+  args        = jsonencode({ type = "organes" })
+}
+
 resource "scaleway_function" "ingest_deputes" {
   name         = "ingest-deputes"
   namespace_id = scaleway_function_namespace.main.id

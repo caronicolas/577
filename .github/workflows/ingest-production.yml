@@ -1,0 +1,52 @@
+name: Ingestion Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      scripts:
+        description: "Scripts à exécuter (organes deputes datan agenda)"
+        required: false
+        default: "organes deputes"
+
+jobs:
+  ingest:
+    name: Lancer ingestion sur production
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      - name: organes.py
+        if: contains(github.event.inputs.scripts, 'organes')
+        run: python -m ingestion.assemblee.organes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: deputes.py
+        if: contains(github.event.inputs.scripts, 'deputes')
+        run: python -m ingestion.assemblee.deputes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: datan.py
+        if: contains(github.event.inputs.scripts, 'datan')
+        run: python -m ingestion.gouv.datan
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: agenda.py
+        if: contains(github.event.inputs.scripts, 'agenda')
+        run: python -m ingestion.assemblee.agenda
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

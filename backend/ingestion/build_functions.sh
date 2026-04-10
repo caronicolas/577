@@ -47,6 +47,7 @@ BLUESKY_DIR="$REPO_ROOT/backend/ingestion/bluesky"
 GOUV_DIR="$REPO_ROOT/backend/ingestion/gouv"
 
 build_zip "scrutins"    "$INGESTION_DIR"
+build_zip "organes"     "$INGESTION_DIR"
 build_zip "deputes"     "$INGESTION_DIR"
 build_zip "agenda"      "$INGESTION_DIR"
 build_zip "amendements" "$INGESTION_DIR"
