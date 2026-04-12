@@ -53,6 +53,8 @@ class GroupeDetail(BaseModel):
     couleur: Optional[str]
     nb_deputes: int
     nb_deputes_total: int
+    nb_femmes: int
+    nb_hommes: int
     datan: Optional[DatanGroupeSchema]
     deputes: list[DeputeInGroupe]
 
@@ -146,13 +148,19 @@ async def get_groupe(
         key=lambda d: (not d.actif, d.nom_de_famille),
     )
 
+    actifs = [d for d in organe.deputes if d.actif]
+    nb_femmes = sum(1 for d in actifs if d.sexe == "F")
+    nb_hommes = sum(1 for d in actifs if d.sexe == "H")
+
     return GroupeDetail(
         id=organe.id,
         sigle=organe.sigle,
         libelle=organe.libelle,
         couleur=organe.couleur,
-        nb_deputes=sum(1 for d in organe.deputes if d.actif),
+        nb_deputes=len(actifs),
         nb_deputes_total=len(organe.deputes),
+        nb_femmes=nb_femmes,
+        nb_hommes=nb_hommes,
         datan=(
             DatanGroupeSchema(
                 score_cohesion=datan.score_cohesion,

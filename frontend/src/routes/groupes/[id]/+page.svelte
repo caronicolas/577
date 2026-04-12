@@ -31,6 +31,8 @@
     couleur: string | null;
     nb_deputes: number;
     nb_deputes_total: number;
+    nb_femmes: number;
+    nb_hommes: number;
     datan: DatanGroupe | null;
     deputes: DeputeInGroupe[];
   }
@@ -128,6 +130,16 @@
       </p>
       {#if groupe.datan?.position_politique}
         <span class="position-tag">{groupe.datan.position_politique}</span>
+      {/if}
+      {#if groupe.nb_deputes > 0}
+        {@const femmesPct = Math.round((groupe.nb_femmes / groupe.nb_deputes) * 100)}
+        <div class="parite">
+          <div class="parite-bar">
+            <div class="parite-seg parite-f" style="width: {femmesPct}%"></div>
+            <div class="parite-seg parite-h" style="width: {100 - femmesPct}%"></div>
+          </div>
+          <span class="parite-label">{groupe.nb_femmes} F · {groupe.nb_hommes} H · {femmesPct} % de femmes</span>
+        </div>
       {/if}
     </div>
   </div>
@@ -270,6 +282,33 @@
     background: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+  }
+
+  /* Parité */
+  .parite {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    max-width: 260px;
+  }
+
+  .parite-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--color-border);
+  }
+
+  .parite-seg { height: 100%; }
+
+  .parite-f { background: #e879a0; }
+  .parite-h { background: #60a5fa; }
+
+  .parite-label {
+    font-size: 0.72rem;
     color: var(--color-text-muted);
   }
 
