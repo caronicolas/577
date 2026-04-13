@@ -116,7 +116,12 @@ def _formate_post(today: date, titres: list[str]) -> str:
     lignes: list[str] = []
     for titre in titres:
         ligne = f"• {titre}"
-        if lignes and len("\n".join(lignes + [ligne])) > budget:
+        candidate = "\n".join(lignes + [ligne])
+        if len(candidate) > budget:
+            if not lignes:
+                # Premier titre trop long : on le tronque
+                ligne = ligne[: budget - 1] + "…"
+                lignes.append(ligne)
             break
         lignes.append(ligne)
 
@@ -177,12 +182,15 @@ async def _post_bluesky(client: httpx.AsyncClient, session: dict, text: str) -> 
                 "$type": "app.bsky.feed.post",
                 "text": text,
                 "createdAt": now,
+                "langs": ["fr"],
                 "facets": facets,
             },
         },
         timeout=15,
     )
-    r.raise_for_status()
+    if not r.is_success:
+        logger.error("Bluesky createRecord error %s : %s", r.status_code, r.text)
+        r.raise_for_status()
     return r.json()
 
 
@@ -204,11 +212,19 @@ async def _main() -> dict:
     text = _formate_post(today, titres)
     logger.info("Post formaté (%d car.) :\n%s", len(text), text)
 
-    async with httpx.AsyncClient() as client:
-        session = await _create_session(client)
-        logger.info("Session Bluesky créée pour %s", session.get("handle"))
-        result = await _post_bluesky(client, session, text)
-        logger.info("Post publié : %s", result.get("uri"))
+    try:
+        async with httpx.AsyncClient() as client:
+            session = await _create_session(client)
+            logger.info("Session Bluesky créée pour %s", session.get("handle"))
+            result = await _post_bluesky(client, session, text)
+            logger.info("Post publié : %s", result.get("uri"))
+    except httpx.HTTPStatusError as e:
+        return {
+            "status": "error",
+            "http_status": e.response.status_code,
+            "bsky_error": e.response.text,
+            "post_text": text,
+        }
 
     return {"status": "ok", "uri": result.get("uri"), "seances": len(titres)}
 
