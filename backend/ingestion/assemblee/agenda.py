@@ -419,8 +419,16 @@ async def run() -> None:
         "Parsed: %d séances, %d réunions commission", len(seances), len(reunions)
     )
 
-    async with await psycopg.AsyncConnection.connect(db_url, autocommit=True) as conn:
-        # Charger IDs connus pour éviter FK violations
+    conn_kwargs = dict(
+        autocommit=True,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5,
+    )
+
+    # Charger IDs connus pour éviter FK violations
+    async with await psycopg.AsyncConnection.connect(db_url, **conn_kwargs) as conn:
         depute_ids = {
             row[0] async for row in await conn.execute("SELECT id FROM deputes")
         }
@@ -433,17 +441,23 @@ async def run() -> None:
             await upsert_seances(conn, seances)
             logger.info("Séances insérées/mises à jour : %d", len(seances))
 
-        BATCH = 200
-        for i in range(0, len(reunions), BATCH):
-            batch = reunions[i : i + BATCH]
-            async with conn.transaction():
-                await upsert_reunions(conn, batch, depute_ids, organes)
-            logger.info(
-                "Réunions insérées : %d/%d",
-                min(i + BATCH, len(reunions)),
-                len(reunions),
-            )
-        logger.info("Réunions commission insérées/mises à jour : %d", len(reunions))
+    # Insérer les réunions en rouvrant la connexion toutes les 1000 réunions
+    # pour éviter les déconnexions serveur sur les longues sessions (~20 min)
+    BATCH = 200
+    RECONNECT_EVERY = 1000
+    for chunk_start in range(0, len(reunions), RECONNECT_EVERY):
+        chunk = reunions[chunk_start : chunk_start + RECONNECT_EVERY]
+        async with await psycopg.AsyncConnection.connect(db_url, **conn_kwargs) as conn:
+            for i in range(0, len(chunk), BATCH):
+                batch = chunk[i : i + BATCH]
+                async with conn.transaction():
+                    await upsert_reunions(conn, batch, depute_ids, organes)
+                logger.info(
+                    "Réunions insérées : %d/%d",
+                    min(chunk_start + i + BATCH, len(reunions)),
+                    len(reunions),
+                )
+    logger.info("Réunions commission insérées/mises à jour : %d", len(reunions))
 
     logger.info("Ingestion agenda terminée.")
 
