@@ -1,5 +1,5 @@
 """
-Poste l'agenda du jour sur Bluesky (AT Protocol).
+Poste l'agenda du jour sur Bluesky (AT Protocol) sous forme de thread.
 Handler Scaleway : handle(event, context)
 
 Variables d'environnement requises :
@@ -22,9 +22,25 @@ logger = logging.getLogger(__name__)
 BSKY_PDS = "https://bsky.social/xrpc"
 MAX_POST_LENGTH = 300
 
+MOIS = [
+    "",
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
+
 
 # ---------------------------------------------------------------------------
-# Connexion DB (même pattern que scrutins.py)
+# Connexion DB
 # ---------------------------------------------------------------------------
 
 
@@ -84,48 +100,24 @@ async def _get_seances_du_jour(today: date) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Formatage du post
+# Formatage
 # ---------------------------------------------------------------------------
 
 
-def _formate_post(today: date, titres: list[str]) -> str:
-    mois = [
-        "",
-        "janvier",
-        "février",
-        "mars",
-        "avril",
-        "mai",
-        "juin",
-        "juillet",
-        "août",
-        "septembre",
-        "octobre",
-        "novembre",
-        "décembre",
-    ]
-    date_str = f"{today.day} {mois[today.month]} {today.year}"
-    nb = len(titres)
-    header = (
+def _formate_post_principal(today: date, nb: int) -> str:
+    date_str = f"{today.day} {MOIS[today.month]} {today.year}"
+    return (
         f"📅 Assemblée Nationale — {date_str}\n\n"
-        f"En séance ({nb} sujets aujourd'hui) :\n"
+        f"En séance ({nb} sujet{'s' if nb > 1 else ''}) 👇\n\n"
+        f"👉 les577.fr/agenda"
     )
-    footer = "\n\n👉 les577.fr/agenda"
-    budget = MAX_POST_LENGTH - len(header) - len(footer)
 
-    lignes: list[str] = []
-    for titre in titres:
-        ligne = f"• {titre}"
-        candidate = "\n".join(lignes + [ligne])
-        if len(candidate) > budget:
-            if not lignes:
-                # Premier titre trop long : on le tronque
-                ligne = ligne[: budget - 1] + "…"
-                lignes.append(ligne)
-            break
-        lignes.append(ligne)
 
-    return header + "\n".join(lignes) + footer
+def _formate_reply(i: int, nb: int, titre: str) -> str:
+    text = f"{i}/{nb} • {titre}"
+    if len(text) > MAX_POST_LENGTH:
+        text = text[: MAX_POST_LENGTH - 1] + "…"
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -134,58 +126,67 @@ def _formate_post(today: date, titres: list[str]) -> str:
 
 
 async def _create_session(client: httpx.AsyncClient) -> dict:
-    identifier = os.environ["BSKY_IDENTIFIER"]
-    app_password = os.environ["BSKY_APP_PASSWORD"]
     r = await client.post(
         f"{BSKY_PDS}/com.atproto.server.createSession",
-        json={"identifier": identifier, "password": app_password},
+        json={
+            "identifier": os.environ["BSKY_IDENTIFIER"],
+            "password": os.environ["BSKY_APP_PASSWORD"],
+        },
         timeout=15,
     )
     r.raise_for_status()
     return r.json()
 
 
-async def _post_bluesky(client: httpx.AsyncClient, session: dict, text: str) -> dict:
+def _build_facets(text: str) -> list[dict]:
+    """Détecte les liens https:// dans le texte et construit les facets."""
+    facets = []
+    text_bytes = text.encode("utf-8")
+    for link in ["les577.fr/agenda"]:
+        uri = f"https://{link}"
+        start = text_bytes.find(link.encode("utf-8"))
+        if start >= 0:
+            facets.append(
+                {
+                    "$type": "app.bsky.richtext.facet",
+                    "index": {
+                        "byteStart": start,
+                        "byteEnd": start + len(link.encode("utf-8")),
+                    },
+                    "features": [{"$type": "app.bsky.richtext.facet#link", "uri": uri}],
+                }
+            )
+    return facets
+
+
+async def _create_record(
+    client: httpx.AsyncClient,
+    session: dict,
+    text: str,
+    reply_ref: dict | None = None,
+) -> dict:
     repo = session["did"]
     token = session["accessJwt"]
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-    # Bluesky facet : lien cliquable sur "les577.fr/agenda"
-    link_text = "les577.fr/agenda"
-    link_uri = "https://les577.fr/agenda"
-    text_bytes = text.encode("utf-8")
-    start = text_bytes.find(link_text.encode("utf-8"))
-    facets = (
-        [
-            {
-                "$type": "app.bsky.richtext.facet",
-                "index": {
-                    "byteStart": start,
-                    "byteEnd": start + len(link_text.encode("utf-8")),
-                },
-                "features": [
-                    {"$type": "app.bsky.richtext.facet#link", "uri": link_uri}
-                ],
-            }
-        ]
-        if start >= 0
-        else []
-    )
+    record: dict = {
+        "$type": "app.bsky.feed.post",
+        "text": text,
+        "createdAt": now,
+        "langs": ["fr"],
+    }
+
+    facets = _build_facets(text)
+    if facets:
+        record["facets"] = facets
+
+    if reply_ref:
+        record["reply"] = reply_ref
 
     r = await client.post(
         f"{BSKY_PDS}/com.atproto.repo.createRecord",
         headers={"Authorization": f"Bearer {token}"},
-        json={
-            "repo": repo,
-            "collection": "app.bsky.feed.post",
-            "record": {
-                "$type": "app.bsky.feed.post",
-                "text": text,
-                "createdAt": now,
-                "langs": ["fr"],
-                "facets": facets,
-            },
-        },
+        json={"repo": repo, "collection": "app.bsky.feed.post", "record": record},
         timeout=15,
     )
     if not r.is_success:
@@ -208,28 +209,46 @@ async def _main() -> dict:
         logger.info("Aucune séance AN aujourd'hui — pas de post Bluesky.")
         return {"status": "skipped", "reason": "no_seances"}
 
-    logger.info("%d séance(s) trouvée(s)", len(titres))
-    text = _formate_post(today, titres)
-    logger.info("Post formaté (%d car.) :\n%s", len(text), text)
+    nb = len(titres)
+    logger.info("%d sujet(s) au programme", nb)
 
     try:
         async with httpx.AsyncClient() as client:
             session = await _create_session(client)
             logger.info("Session Bluesky créée pour %s", session.get("handle"))
-            result = await _post_bluesky(client, session, text)
-            logger.info("Post publié : %s", result.get("uri"))
+
+            # Post principal
+            text_principal = _formate_post_principal(today, nb)
+            root = await _create_record(client, session, text_principal)
+            logger.info("Post principal publié : %s", root.get("uri"))
+
+            root_ref = {"uri": root["uri"], "cid": root["cid"]}
+            parent_ref = root_ref
+
+            # Replies — une par sujet
+            for i, titre in enumerate(titres, 1):
+                text_reply = _formate_reply(i, nb, titre)
+                reply_ref = {"root": root_ref, "parent": parent_ref}
+                result = await _create_record(client, session, text_reply, reply_ref)
+                logger.info("Reply %d/%d publiée : %s", i, nb, result.get("uri"))
+                parent_ref = {"uri": result["uri"], "cid": result["cid"]}
+
     except httpx.HTTPStatusError as e:
         return {
             "status": "error",
             "http_status": e.response.status_code,
             "bsky_error": e.response.text,
-            "post_text": text,
         }
 
-    return {"status": "ok", "uri": result.get("uri"), "seances": len(titres)}
+    return {"status": "ok", "thread_uri": root_ref["uri"], "replies": nb}
 
 
 def handle(event: dict, context: object) -> dict:
     """Point d'entrée Scaleway Serverless Functions."""
     logging.basicConfig(level=logging.INFO)
     return asyncio.run(_main())
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(_main())
