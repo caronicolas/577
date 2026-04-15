@@ -176,6 +176,32 @@ resource "scaleway_function_cron" "post_agenda_bluesky_daily" {
   args        = jsonencode({})
 }
 
+resource "scaleway_function" "post_commissions_bluesky" {
+  name         = "post-commissions-bluesky"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "post_commissions.handle"
+  privacy      = "private"
+  timeout      = 60
+  max_scale    = 1
+  memory_limit = 128
+  zip_file     = "functions/post_commissions.zip"
+  zip_hash     = try(filesha256("functions/post_commissions.zip"), "")
+  deploy       = true
+
+  secret_environment_variables = {
+    DATABASE_URL      = var.database_url
+    BSKY_IDENTIFIER   = var.bsky_identifier
+    BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+}
+
+resource "scaleway_function_cron" "post_commissions_bluesky_quarter" {
+  function_id = scaleway_function.post_commissions_bluesky.id
+  schedule    = "*/15 7-17 * * 1-5" # Toutes les 15 min, 7h-17h UTC (9h-19h Paris), lun-ven
+  args        = jsonencode({})
+}
+
 resource "scaleway_function" "ingest_datan" {
   name         = "ingest-datan"
   namespace_id = scaleway_function_namespace.main.id
