@@ -1,6 +1,6 @@
 """
-Ingestion des groupes parlementaires depuis data.assemblee-nationale.fr.
-Même ZIP que les députés (AMO10) — filtre sur codeType == "GP".
+Ingestion des organes (groupes parlementaires + commissions).
+Source : data.assemblee-nationale.fr — ZIP AMO10.
 Handler Scaleway : handle(event, context)
 """
 
@@ -11,11 +11,10 @@ import logging
 import os
 import zipfile
 from typing import Optional
+from urllib.parse import unquote
 
 import httpx
-from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+import psycopg
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
@@ -30,24 +29,11 @@ LEGISLATURE = 17
 
 
 # ---------------------------------------------------------------------------
-# Modèle Pydantic
-# ---------------------------------------------------------------------------
-
-
-class OrganeNormalise(BaseModel):
-    id: str
-    sigle: str
-    libelle: str
-    couleur: Optional[str] = None
-    legislature: int = LEGISLATURE
-
-
-# ---------------------------------------------------------------------------
 # Parsing
 # ---------------------------------------------------------------------------
 
 
-def _normalise_organe(organe: dict) -> OrganeNormalise | None:
+def _normalise_organe(organe: dict) -> Optional[dict]:
     try:
         uid = organe.get("uid")
         if not uid or not isinstance(uid, str):
@@ -59,7 +45,6 @@ def _normalise_organe(organe: dict) -> OrganeNormalise | None:
             return None
 
         couleur = organe.get("couleurAssociee")
-        # Valider format hex (#rrggbb)
         if couleur and (len(couleur) != 7 or not couleur.startswith("#")):
             couleur = None
 
@@ -69,13 +54,13 @@ def _normalise_organe(organe: dict) -> OrganeNormalise | None:
         except (ValueError, TypeError):
             legislature = LEGISLATURE
 
-        return OrganeNormalise(
-            id=uid,
-            sigle=sigle,
-            libelle=libelle,
-            couleur=couleur,
-            legislature=legislature,
-        )
+        return {
+            "id": uid,
+            "sigle": sigle,
+            "libelle": libelle,
+            "couleur": couleur,
+            "legislature": legislature,
+        }
     except Exception:
         logger.warning(
             "Normalisation échouée pour organe %s", organe.get("uid"), exc_info=True
@@ -101,8 +86,8 @@ async def _download_zip(client: httpx.AsyncClient) -> bytes:
     return r.content
 
 
-def _parse_zip(content: bytes) -> list[OrganeNormalise]:
-    organes: list[OrganeNormalise] = []
+def _parse_zip(content: bytes) -> list[dict]:
+    organes: list[dict] = []
 
     with zipfile.ZipFile(io.BytesIO(content)) as zf:
         organe_files = [
@@ -114,8 +99,6 @@ def _parse_zip(content: bytes) -> list[OrganeNormalise]:
             try:
                 data = json.loads(zf.read(name))
                 organe = data.get("organe", data)
-                # GP = groupes parlementaires, COMNL/COMPER/COMSPCOM = commissions
-                # On stocke tous les organes avec sigle+libelle valides
                 if not organe.get("codeType"):
                     continue
                 o = _normalise_organe(organe)
@@ -127,47 +110,69 @@ def _parse_zip(content: bytes) -> list[OrganeNormalise]:
     return organes
 
 
-async def fetch_all_organes() -> list[OrganeNormalise]:
-    async with httpx.AsyncClient() as client:
-        content = await _download_zip(client)
+# ---------------------------------------------------------------------------
+# Connexion DB (même pattern que les autres fonctions psycopg3)
+# ---------------------------------------------------------------------------
 
-    organes = _parse_zip(content)
-    logger.info(
-        "%d groupes parlementaires récupérés (législature %d)",
-        len(organes),
-        LEGISLATURE,
-    )
-    return organes
+
+def _get_conn_params() -> dict:
+    url = DATABASE_URL.split("://", 1)[1]
+    at = url.rfind("@")
+    userinfo = url[:at]
+    hostinfo = url[at + 1 :]
+    user, password = userinfo.split(":", 1) if ":" in userinfo else (userinfo, "")
+    slash = hostinfo.find("/")
+    if slash >= 0:
+        hostport, dbname_raw = hostinfo[:slash], hostinfo[slash + 1 :]
+    else:
+        hostport, dbname_raw = hostinfo, ""
+    dbname = dbname_raw.split("?", 1)[0]
+    if ":" in hostport:
+        colon = hostport.rfind(":")
+        host, port = hostport[:colon], int(hostport[colon + 1 :])
+    else:
+        host, port = hostport, 5432
+    return {
+        "host": host,
+        "port": port,
+        "dbname": dbname,
+        "user": unquote(user),
+        "password": unquote(password),
+    }
 
 
 # ---------------------------------------------------------------------------
 # Upsert PostgreSQL
 # ---------------------------------------------------------------------------
 
-_UPSERT = text(
-    """
+_UPSERT = """
     INSERT INTO organes (id, sigle, libelle, couleur, legislature, updated_at)
-    VALUES (:id, :sigle, :libelle, :couleur, :legislature, now())
+    VALUES (%s, %s, %s, %s, %s, now())
     ON CONFLICT (id) DO UPDATE SET
-        sigle      = EXCLUDED.sigle,
-        libelle    = EXCLUDED.libelle,
-        couleur    = EXCLUDED.couleur,
+        sigle       = EXCLUDED.sigle,
+        libelle     = EXCLUDED.libelle,
+        couleur     = EXCLUDED.couleur,
         legislature = EXCLUDED.legislature,
-        updated_at = now()
+        updated_at  = now()
 """
-)
 
 
-async def upsert_organes(organes: list[OrganeNormalise]) -> int:
-    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
-
-    async with Session() as session:
-        async with session.begin():
-            for organe in organes:
-                await session.execute(_UPSERT, organe.model_dump())
-
-    await engine.dispose()
+async def upsert_organes(organes: list[dict]) -> int:
+    conn_params = _get_conn_params()
+    BATCH = 500
+    async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
+        for i in range(0, len(organes), BATCH):
+            batch = organes[i : i + BATCH]
+            params = [
+                (o["id"], o["sigle"], o["libelle"], o["couleur"], o["legislature"])
+                for o in batch
+            ]
+            async with conn.transaction():
+                async with conn.cursor() as cur:
+                    await cur.executemany(_UPSERT, params)
+            logger.info(
+                "Upsert %d/%d organes", min(i + BATCH, len(organes)), len(organes)
+            )
     return len(organes)
 
 
@@ -178,9 +183,12 @@ async def upsert_organes(organes: list[OrganeNormalise]) -> int:
 
 async def _main() -> dict:
     logger.info("Démarrage ingestion organes — législature %d", LEGISLATURE)
-    organes = await fetch_all_organes()
+    async with httpx.AsyncClient() as client:
+        content = await _download_zip(client)
+    organes = _parse_zip(content)
+    logger.info("%d organes parsés", len(organes))
     count = await upsert_organes(organes)
-    logger.info("Terminé : %d groupes parlementaires upsertés", count)
+    logger.info("Terminé : %d organes upsertés", count)
     return {"status": "ok", "upserted": count}
 
 
