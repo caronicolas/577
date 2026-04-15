@@ -269,17 +269,20 @@
           {#each amendements as a (a.id)}
             <li class="list-item" data-sort={a.sort ?? ''}>
               <a href={a.url_an} target="_blank" rel="noopener noreferrer" class="amend-link">
-                <span class="amend-num">N°{a.numero ?? '—'}</span>
-                {#if texteNum(a.texte_legislature)}
-                  <span class="amend-texte">Texte {texteNum(a.texte_legislature)}</span>
-                {/if}
+                <div class="amend-meta">
+                  <span class="amend-num">N°{a.numero ?? '—'}</span>
+                  {#if texteNum(a.texte_legislature)}
+                    <span class="amend-texte">Texte {texteNum(a.texte_legislature)}</span>
+                  {/if}
+                  <span class="amend-spacer"></span>
+                  {#if a.date_depot}
+                    <span class="amend-date">{a.date_depot}</span>
+                  {/if}
+                  {#if a.sort}
+                    <span class="amend-sort" data-sort={a.sort}>{a.sort}</span>
+                  {/if}
+                </div>
                 <span class="amend-titre">{a.titre ?? '—'}</span>
-                {#if a.date_depot}
-                  <span class="amend-date">{a.date_depot}</span>
-                {/if}
-                {#if a.sort}
-                  <span class="amend-sort" data-sort={a.sort}>{a.sort}</span>
-                {/if}
               </a>
             </li>
           {/each}
@@ -432,18 +435,25 @@
 
   .amend-link {
     display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
+    flex-direction: column;
+    gap: 0.2rem;
     width: 100%;
     color: var(--color-text);
     text-decoration: none;
     font-size: 0.875rem;
-    flex-wrap: wrap;
     border-left: 3px solid transparent;
     padding-left: 0.5rem;
   }
 
   .amend-link:hover { text-decoration: none; }
+
+  .amend-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .amend-spacer { flex: 1; }
 
   .amend-num {
     font-family: var(--font-mono);
@@ -462,7 +472,7 @@
     border-radius: 3px;
   }
 
-  .amend-titre { flex: 1; color: var(--color-text-muted); }
+  .amend-titre { font-size: 0.8rem; color: var(--color-text-muted); }
 
   .amend-date {
     font-family: var(--font-mono);
@@ -480,7 +490,7 @@
   .list-item[data-sort="Retiré"] .amend-link,
   .list-item[data-sort="Tombé"] .amend-link { border-left-color: var(--color-text-muted); }
 
-  .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+  .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; margin-left: 0.25rem; }
 
   .vote-link {
     display: flex;
