@@ -342,7 +342,6 @@ async def upsert_reunions(
     if not reunions:
         return
     for r in reunions:
-        # Vérifier que l'organe existe avant d'insérer la FK
         organe_id = r.organe_id if r.organe_id in organes else None
         organe_libelle = organes.get(r.organe_id) if r.organe_id else None
         await conn.execute(
