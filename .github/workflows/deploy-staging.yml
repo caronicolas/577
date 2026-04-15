@@ -253,7 +253,7 @@ jobs:
       - name: Build (staging)
         run: npm run build
         env:
-          PUBLIC_API_BASE_URL: https://api.les577.fr
+          PUBLIC_API_BASE_URL: https://${{ needs.deploy-staging.outputs.api_url }}
 
       - name: Deploy to Scaleway Object Storage
         uses: jakejarvis/s3-sync-action@v0.5.1
