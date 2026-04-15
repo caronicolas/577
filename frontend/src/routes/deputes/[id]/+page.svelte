@@ -278,11 +278,13 @@
                   {#if a.date_depot}
                     <span class="amend-date">{a.date_depot}</span>
                   {/if}
-                  {#if a.sort}
-                    <span class="amend-sort" data-sort={a.sort}>{a.sort}</span>
-                  {/if}
+                  <span class="amend-sort" data-sort={a.sort ?? ''}>{a.sort ?? 'Déposé'}</span>
                 </div>
-                <span class="amend-titre">{a.titre ?? '—'}</span>
+                {#if a.expose_sommaire}
+                  <span class="amend-titre">{a.expose_sommaire.slice(0, 120)}{a.expose_sommaire.length > 120 ? '…' : ''}</span>
+                {:else if a.titre}
+                  <span class="amend-titre">{a.titre}</span>
+                {/if}
               </a>
             </li>
           {/each}
@@ -490,7 +492,9 @@
   .list-item[data-sort="Retiré"] .amend-link,
   .list-item[data-sort="Tombé"] .amend-link { border-left-color: var(--color-text-muted); }
 
-  .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; margin-left: 0.25rem; }
+  .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; margin-left: 0.25rem; color: var(--color-text-muted); }
+  .amend-sort[data-sort="Adopté"] { color: var(--color-vote); }
+  .amend-sort[data-sort="Rejeté"] { color: var(--color-absent); }
 
   .vote-link {
     display: flex;

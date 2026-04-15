@@ -1,4 +1,5 @@
 from datetime import date
+from html import unescape
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -29,6 +30,7 @@ class AmendementListItem(BaseModel):
     id: str
     numero: Optional[str]
     titre: Optional[str]
+    expose_sommaire: Optional[str]
     texte_legislature: Optional[str]
     date_depot: Optional[date]
     sort: Optional[str]
@@ -93,6 +95,9 @@ async def list_amendements(
                 id=a.id,
                 numero=a.numero,
                 titre=a.titre,
+                expose_sommaire=(
+                    unescape(a.expose_sommaire) if a.expose_sommaire else None
+                ),
                 texte_legislature=a.texte_legislature,
                 date_depot=a.date_depot,
                 sort=a.sort,
