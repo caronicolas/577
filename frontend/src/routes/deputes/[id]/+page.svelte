@@ -251,11 +251,8 @@
         <ul class="list">
           {#each votes as v (v.id)}
             <li class="list-item">
-              <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
+              <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link" data-pos={v.position ?? ''}>
                 <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
-                {#if v.position}
-                  <span class="vote-pos" data-pos={v.position}>{v.position}</span>
-                {/if}
               </a>
             </li>
           {/each}
@@ -473,21 +470,20 @@
     display: flex;
     gap: 0.5rem;
     align-items: baseline;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--color-border);
     font-size: 0.875rem;
     color: var(--color-text);
     width: 100%;
+    border-left: 3px solid transparent;
+    padding-left: 0.5rem;
   }
 
-  .vote-link:hover { text-decoration: none; background: var(--color-bg); }
+  .vote-link:hover { text-decoration: none; }
+
+  .vote-link[data-pos="Pour"] { border-left-color: var(--color-vote); }
+  .vote-link[data-pos="Contre"] { border-left-color: var(--color-absent); }
+  .vote-link[data-pos="Abstention"] { border-left-color: var(--color-text-muted); }
 
   .vote-titre { flex: 1; }
-
-  .vote-pos { flex-shrink: 0; font-size: 0.75rem; font-weight: 600; }
-  .vote-pos[data-pos="Pour"] { color: var(--color-vote); }
-  .vote-pos[data-pos="Contre"] { color: var(--color-absent); }
-  .vote-pos[data-pos="Abstention"] { color: var(--color-text-muted); }
 
   .muted { color: var(--color-text-muted); }
 
