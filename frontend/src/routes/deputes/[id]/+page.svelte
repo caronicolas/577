@@ -267,7 +267,7 @@
       {:else}
         <ul class="list">
           {#each amendements as a (a.id)}
-            <li class="list-item">
+            <li class="list-item" data-sort={a.sort ?? ''}>
               <a href={a.url_an} target="_blank" rel="noopener noreferrer" class="amend-link">
                 <span class="amend-num">N°{a.numero ?? '—'}</span>
                 {#if texteNum(a.texte_legislature)}
@@ -439,9 +439,11 @@
     text-decoration: none;
     font-size: 0.875rem;
     flex-wrap: wrap;
+    border-left: 3px solid transparent;
+    padding-left: 0.5rem;
   }
 
-  .amend-link:hover { text-decoration: none; background: var(--color-bg); }
+  .amend-link:hover { text-decoration: none; }
 
   .amend-num {
     font-family: var(--font-mono);
@@ -469,9 +471,16 @@
     flex-shrink: 0;
   }
 
+  .list-item[data-sort="Adopté"] { background: rgba(56, 161, 105, 0.2); }
+  .list-item[data-sort="Rejeté"] { background: rgba(229, 62, 62, 0.2); }
+  .list-item[data-sort="Retiré"],
+  .list-item[data-sort="Tombé"] { background: rgba(107, 107, 102, 0.2); }
+  .list-item[data-sort="Adopté"] .amend-link { border-left-color: var(--color-vote); }
+  .list-item[data-sort="Rejeté"] .amend-link { border-left-color: var(--color-absent); }
+  .list-item[data-sort="Retiré"] .amend-link,
+  .list-item[data-sort="Tombé"] .amend-link { border-left-color: var(--color-text-muted); }
+
   .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
-  .amend-sort[data-sort="Adopté"] { color: var(--color-vote); }
-  .amend-sort[data-sort="Rejeté"] { color: var(--color-absent); }
 
   .vote-link {
     display: flex;
