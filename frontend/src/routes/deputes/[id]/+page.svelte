@@ -250,8 +250,8 @@
       {:else}
         <ul class="list">
           {#each votes as v (v.id)}
-            <li class="list-item">
-              <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link" data-pos={v.position ?? ''}>
+            <li class="list-item" data-pos={v.position ?? ''}>
+              <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
                 <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
               </a>
             </li>
@@ -419,9 +419,16 @@
     gap: 1rem;
     align-items: baseline;
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
     font-size: 0.875rem;
   }
+
+  .list-item[data-pos="pour"] { background: rgba(56, 161, 105, 0.2); }
+  .list-item[data-pos="contre"] { background: rgba(229, 62, 62, 0.2); }
+  .list-item[data-pos="abstention"] { background: rgba(107, 107, 102, 0.2); }
+  .list-item[data-pos="pour"] .vote-link { border-left-color: var(--color-vote); }
+  .list-item[data-pos="contre"] .vote-link { border-left-color: var(--color-absent); }
+  .list-item[data-pos="abstention"] .vote-link { border-left-color: var(--color-text-muted); }
 
   .amend-link {
     display: flex;
@@ -479,9 +486,6 @@
 
   .vote-link:hover { text-decoration: none; }
 
-  .vote-link[data-pos="pour"] { border-left-color: var(--color-vote); background: rgba(56, 161, 105, 0.5); }
-  .vote-link[data-pos="contre"] { border-left-color: var(--color-absent); background: rgba(229, 62, 62, 0.5); }
-  .vote-link[data-pos="abstention"] { border-left-color: var(--color-text-muted); background: rgba(107, 107, 102, 0.5); }
 
   .vote-titre { flex: 1; }
 
