@@ -479,9 +479,9 @@
 
   .vote-link:hover { text-decoration: none; }
 
-  .vote-link[data-pos="pour"] { border-left-color: var(--color-vote); }
-  .vote-link[data-pos="contre"] { border-left-color: var(--color-absent); }
-  .vote-link[data-pos="abstention"] { border-left-color: var(--color-text-muted); }
+  .vote-link[data-pos="pour"] { border-left-color: var(--color-vote); background: rgba(56, 161, 105, 0.5); }
+  .vote-link[data-pos="contre"] { border-left-color: var(--color-absent); background: rgba(229, 62, 62, 0.5); }
+  .vote-link[data-pos="abstention"] { border-left-color: var(--color-text-muted); background: rgba(107, 107, 102, 0.5); }
 
   .vote-titre { flex: 1; }
 
