@@ -82,7 +82,7 @@ async def _get_reunions_imminentes(
               AND is_senat = false
               AND heure_debut >= %s
               AND heure_debut < %s
-              AND organe_libelle IS NOT NULL
+
             ORDER BY heure_debut, id
             """,
             (today, heure_debut, heure_fin),
@@ -126,7 +126,7 @@ def _formate_post_commission(r: dict) -> str:
     heure = r["heure_debut"] or "?"
     # Remplacement ":" → "h" pour un format plus naturel en français
     heure_fmt = heure.replace(":", "h")
-    organe = r["organe_libelle"] or ""
+    organe = r["organe_libelle"] or "Commission"
     titre = r["titre"] or ""
 
     header = f"🏛️ {organe} — {heure_fmt}"
