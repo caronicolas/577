@@ -44,12 +44,6 @@
       value: scores?.score_loyaute ?? null,
       color: 'var(--color-commission)',
     },
-    {
-      label: 'Proximité majorité',
-      description: 'Vote dans le même sens que la majorité présidentielle',
-      value: scores?.score_majorite ?? null,
-      color: 'var(--color-vote-actif)',
-    },
   ]);
 </script>
 
