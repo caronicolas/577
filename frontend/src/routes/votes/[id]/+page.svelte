@@ -66,6 +66,12 @@
   const totalAbstention = $derived(groupeStats.reduce((s, g) => s + g.abstention, 0));
   const maxVotes = $derived(Math.max(totalPour, totalContre, totalAbstention, 1));
 
+  const TYPE_VOTE_INFO: Record<string, string> = {
+    'scrutin public solennel': 'Scrutin solennel — vote public et nominatif sur les textes les plus importants (budget, loi de finances, motion de confiance…). Chaque député·e vote individuellement et son vote est publié.',
+    'scrutin public ordinaire': 'Scrutin ordinaire — vote public nominatif en séance plénière sur des textes courants. Moins médiatisé que le solennel, mais le vote de chaque député·e est également enregistré.',
+    'motion de censure': 'Motion de censure — vote visant à renverser le gouvernement. Adoptée si la majorité absolue des membres de l'Assemblée vote pour.',
+  };
+
   let barTooltip = $state<{ libelle: string; count: number; label: string; x: number; y: number } | null>(null);
 
   function showBarTooltip(e: MouseEvent, g: GroupeStats, label: string, count: number) {
@@ -102,6 +108,12 @@
         · <strong class="sort" class:adopte={scrutin.sort === 'adopté'} class:rejete={scrutin.sort === 'rejeté'}>
           {scrutin.sort}
         </strong>
+      {/if}
+      {#if scrutin.type_vote}
+        · <span
+            class="type-vote-badge"
+            title={TYPE_VOTE_INFO[scrutin.type_vote] ?? scrutin.type_vote}
+          >{scrutin.type_vote}</span>
       {/if}
     </p>
     <h1>{scrutin.titre}</h1>
@@ -254,6 +266,19 @@
 
   .sort.adopte { color: var(--color-vote); }
   .sort.rejete { color: var(--color-absent); }
+
+  .type-vote-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    cursor: help;
+    text-transform: capitalize;
+    vertical-align: middle;
+  }
 
   .stats {
     display: flex;
