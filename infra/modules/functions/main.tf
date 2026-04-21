@@ -65,7 +65,7 @@ resource "scaleway_function" "ingest_organes" {
 
 resource "scaleway_function_cron" "organes_weekly" {
   function_id = scaleway_function.ingest_organes.id
-  schedule    = "0 4 * * 0" # Dimanche 04:00 UTC (avant deputes lundi 05:00)
+  schedule    = "0 4 * * *" # Quotidien 04:00 UTC
   args        = jsonencode({ type = "organes" })
 }
 
