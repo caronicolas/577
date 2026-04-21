@@ -69,7 +69,7 @@
   const TYPE_VOTE_INFO: Record<string, string> = {
     'scrutin public solennel': 'Scrutin solennel — vote public et nominatif sur les textes les plus importants (budget, loi de finances, motion de confiance…). Chaque député·e vote individuellement et son vote est publié.',
     'scrutin public ordinaire': 'Scrutin ordinaire — vote public nominatif en séance plénière sur des textes courants. Moins médiatisé que le solennel, mais le vote de chaque député·e est également enregistré.',
-    'motion de censure': 'Motion de censure — vote visant à renverser le gouvernement. Adoptée si la majorité absolue des membres de l'Assemblée vote pour.',
+    'motion de censure': "Motion de censure — vote visant à renverser le gouvernement. Adoptée si la majorité absolue des membres de l'Assemblée vote pour.",
   };
 
   let barTooltip = $state<{ libelle: string; count: number; label: string; x: number; y: number } | null>(null);
