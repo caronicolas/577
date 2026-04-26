@@ -95,9 +95,6 @@
 </div>
 
 <style>
-  .page {
-    max-width: 720px;
-  }
 
   h1 {
     font-size: 1.75rem;
@@ -138,9 +135,9 @@
   }
 
   .source-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
   }
 
   .source {
