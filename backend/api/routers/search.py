@@ -28,6 +28,7 @@ class ScrutinResult(BaseModel):
     titre: str
     date_seance: date
     sort: Optional[str]
+    dossier_libelle: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
@@ -58,7 +59,12 @@ async def search(
     )
     scrutins_stmt = (
         select(Scrutin)
-        .where(Scrutin.titre.ilike(pattern))
+        .where(
+            or_(
+                Scrutin.titre.ilike(pattern),
+                Scrutin.dossier_libelle.ilike(pattern),
+            )
+        )
         .order_by(Scrutin.date_seance.desc())
         .limit(5)
     )
@@ -84,6 +90,7 @@ async def search(
                 titre=s.titre,
                 date_seance=s.date_seance,
                 sort=s.sort,
+                dossier_libelle=s.dossier_libelle,
             )
             for s in scrutins_rows
         ],

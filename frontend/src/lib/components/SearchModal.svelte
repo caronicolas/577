@@ -25,6 +25,7 @@
     titre: string;
     date_seance: string;
     sort: string | null;
+    dossier_libelle: string | null;
   }
 
   let query = $state('');
@@ -155,6 +156,9 @@
                           {s.date_seance}
                           {#if s.sort}
                             · <span class:adopte={s.sort === 'adopté'} class:rejete={s.sort === 'rejeté'}>{s.sort}</span>
+                          {/if}
+                          {#if s.dossier_libelle}
+                            · <span class="result-dossier">{s.dossier_libelle}</span>
                           {/if}
                         </span>
                       </span>
@@ -361,6 +365,15 @@
 
   .adopte { color: var(--color-vote); font-weight: 600; }
   .rejete { color: var(--color-absent); font-weight: 600; }
+
+  .result-dossier {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+    display: inline-block;
+    vertical-align: bottom;
+  }
 
   .empty {
     padding: 1.5rem 1rem;
