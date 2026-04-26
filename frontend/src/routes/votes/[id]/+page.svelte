@@ -102,6 +102,7 @@
   <p class="error">{error}</p>
 {:else if scrutin}
   <div class="header">
+    <h1>{scrutin.titre}</h1>
     <p class="meta">
       Scrutin n°{scrutin.numero} · {scrutin.date_seance}
       {#if scrutin.sort}
@@ -112,11 +113,10 @@
       {#if scrutin.type_vote}
         · <span
             class="type-vote-badge"
-            title={TYPE_VOTE_INFO[scrutin.type_vote] ?? scrutin.type_vote}
+            data-tooltip={TYPE_VOTE_INFO[scrutin.type_vote] ?? scrutin.type_vote}
           >{scrutin.type_vote}</span>
       {/if}
     </p>
-    <h1>{scrutin.titre}</h1>
     {#if scrutin.dossier_libelle}
       <a class="dossier-tag" href="/votes?dossier_ref={scrutin.dossier_ref}">
         {scrutin.dossier_libelle}
@@ -256,21 +256,23 @@
     color: var(--color-text);
   }
 
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+
   .meta {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     color: var(--color-text-muted);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
-  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; }
-
+  .sort { font-weight: 600; }
   .sort.adopte { color: var(--color-vote); }
   .sort.rejete { color: var(--color-absent); }
 
   .type-vote-badge {
+    position: relative;
     display: inline-block;
-    font-size: 0.72rem;
-    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
     border-radius: var(--radius-sm);
     background: var(--color-bg);
     border: 1px solid var(--color-border);
@@ -278,6 +280,32 @@
     cursor: help;
     text-transform: capitalize;
     vertical-align: middle;
+  }
+
+  .type-vote-badge[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-text);
+    color: var(--color-surface);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    width: 280px;
+    white-space: normal;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    text-transform: none;
+    font-weight: 400;
+  }
+
+  .type-vote-badge[data-tooltip]:hover::after {
+    opacity: 1;
   }
 
   .stats {
