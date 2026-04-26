@@ -9,7 +9,7 @@ from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from api.routers import agenda, amendements, deputes, groupes, votes
+from api.routers import agenda, amendements, deputes, groupes, search, votes
 from db.models import Base
 from db.session import engine
 
@@ -62,6 +62,7 @@ app.include_router(groupes.router, prefix="/groupes", tags=["groupes"])
 app.include_router(votes.router, prefix="/votes", tags=["votes"])
 app.include_router(amendements.router, prefix="/amendements", tags=["amendements"])
 app.include_router(agenda.router, prefix="/agenda", tags=["agenda"])
+app.include_router(search.router, prefix="/search", tags=["search"])
 
 
 @app.get("/health")
