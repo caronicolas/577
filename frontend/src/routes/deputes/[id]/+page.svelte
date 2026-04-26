@@ -226,11 +226,7 @@
               </button>
               {#if open}
                 <p class="commission-libelle">
-                  <a
-                    href="https://www.assemblee-nationale.fr/dyn/17/reunions/{c.reunion_id}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >{c.organe_libelle ?? c.titre ?? 'Commission'}</a>
+                  {c.organe_libelle ?? c.titre ?? 'Commission'}
                 </p>
               {/if}
             </li>
