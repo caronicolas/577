@@ -89,7 +89,7 @@
       Ce site est développé de manière indépendante, sans lien avec l'Assemblée Nationale ni aucun parti politique.
       Il ne collecte pas de données personnelles et n'utilise pas de cookies publicitaires.
       Le code source est disponible sur
-      <a href="https://github.com/n1car/577" target="_blank" rel="noopener noreferrer">GitHub</a>.
+      <a href="https://github.com/caronicolas/577" target="_blank" rel="noopener noreferrer">GitHub</a>.
     </p>
   </section>
 </div>
