@@ -33,6 +33,11 @@
   let scrutins = $state<ScrutinResult[]>([]);
   let loading = $state(false);
   let debounceTimer: ReturnType<typeof setTimeout>;
+  let inputEl = $state<HTMLInputElement | null>(null);
+
+  $effect(() => {
+    if (open && inputEl) inputEl.focus();
+  });
 
   $effect(() => {
     if (!open) {
@@ -93,9 +98,8 @@
           <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/>
           <path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
-        <!-- svelte-ignore a11y_autofocus -->
         <input
-          autofocus
+          bind:this={inputEl}
           type="search"
           placeholder="Rechercher un député, un scrutin…"
           bind:value={query}
@@ -124,11 +128,11 @@
                         {#if d.url_photo}
                           <img src={d.url_photo} alt="" />
                         {:else}
-                          <span class="avatar-fallback">{d.prenom[0]}{d.nom[0]}</span>
+                          <span class="avatar-fallback">{d.prenom[0]}{d.nom.split(' ').at(-1)?.[0] ?? ''}</span>
                         {/if}
                       </span>
                       <span class="result-main">
-                        <span class="result-name">{d.prenom} {d.nom}</span>
+                        <span class="result-name">{d.nom}</span>
                         {#if d.groupe_sigle}
                           <span
                             class="result-badge"
