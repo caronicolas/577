@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 BSKY_PDS = "https://bsky.social/xrpc"
 MAX_POST_LENGTH = 300
 TYPES_A_POSTER = {"scrutin public solennel", "motion de censure"}
+SEUIL_SERRE = 15  # voix d'écart max pour qualifier un vote de "serré"
 
 
 # ---------------------------------------------------------------------------
@@ -115,17 +116,99 @@ def _truncate(text: str, max_len: int) -> str:
     return text[: max_len - 1] + "…"
 
 
-def _formate_post(s: dict) -> str:
-    sort = s["sort"] or ""
-    if sort == "adopté":
-        emoji = "✅"
-    elif sort == "rejeté":
-        emoji = "❌"
-    else:
-        emoji = "🗳️"
+def _titre_tronque(titre: str, overhead: int) -> str:
+    available = MAX_POST_LENGTH - overhead
+    return _truncate(titre, available) if available > 10 else ""
 
+
+def _formate_motion_de_censure(s: dict) -> str:
+    """
+    🚨 Motion de censure rejetée — 108 signatures (289 requises)
+
+    Déposée en application de l'article 49, alinéa 2, par Mme Dupont…
+
+    👉 les577.fr/votes/:id
+    """
+    sort = s["sort"] or ""
     url_path = f"les577.fr/votes/{s['id']}"
     footer = f"👉 {url_path}"
+    signatures = s["nombre_pours"] or 0
+
+    if sort == "adopté":
+        header = (
+            f"🚨 Motion de censure adoptée — {signatures} signatures"
+            " (majorité absolue atteinte)"
+        )
+    else:
+        header = f"🚨 Motion de censure rejetée — {signatures}/289 signatures"
+
+    titre = (s["titre"] or "").strip()
+    # Capitalise et nettoie le titre (souvent commence par "la motion de censure…")
+    if titre and not titre[0].isupper():
+        titre = titre[0].upper() + titre[1:]
+
+    overhead = len(header) + len("\n\n") + len("\n\n") + len(footer)
+    titre_court = _titre_tronque(titre, overhead)
+
+    if titre_court:
+        return f"{header}\n\n{titre_court}\n\n{footer}"
+    return f"{header}\n\n{footer}"
+
+
+def _formate_serre(s: dict) -> str:
+    """
+    ⚖️ Adopté de justesse — 7 voix d'écart
+
+    Le sous-amendement n° 199 de M. Léaument…
+
+    Pour : 84 · Contre : 77 · Abstentions : 0
+
+    👉 les577.fr/votes/:id
+    """
+    sort = s["sort"] or ""
+    pour = s["nombre_pours"] or 0
+    contre = s["nombre_contres"] or 0
+    marge = abs(pour - contre)
+    url_path = f"les577.fr/votes/{s['id']}"
+    footer = f"👉 {url_path}"
+
+    if sort == "adopté":
+        header = f"⚖️ Adopté de justesse — {marge} voix d'écart"
+    elif sort == "rejeté":
+        header = f"⚖️ Rejeté de justesse — {marge} voix d'écart"
+    else:
+        header = f"⚖️ Vote serré — {marge} voix d'écart"
+
+    stats_parts = [f"Pour : {pour}", f"Contre : {contre}"]
+    if s["nombre_abstentions"] is not None:
+        stats_parts.append(f"Abstentions : {s['nombre_abstentions']}")
+    stats_line = " · ".join(stats_parts)
+
+    titre = (s["titre"] or "").strip()
+    overhead = len(header) + 6 + len(stats_line) + len(footer)
+    titre_court = _titre_tronque(titre, overhead)
+
+    body = header
+    if titre_court:
+        body += f"\n\n{titre_court}"
+    body += f"\n\n{stats_line}\n\n{footer}"
+    return body
+
+
+def _formate_solennel(s: dict) -> str:
+    """
+    ✅ Adopté — La proposition de loi visant à…
+
+    Pour : 320 · Contre : 210 · Abstentions : 23
+
+    👉 les577.fr/votes/:id
+    """
+    sort = s["sort"] or ""
+    emoji = "✅" if sort == "adopté" else ("❌" if sort == "rejeté" else "🗳️")
+    url_path = f"les577.fr/votes/{s['id']}"
+    footer = f"👉 {url_path}"
+
+    header_prefix = f"{emoji} {sort.capitalize()} — " if sort else f"{emoji} "
 
     stats_parts = []
     if s["nombre_pours"] is not None:
@@ -136,28 +219,30 @@ def _formate_post(s: dict) -> str:
         stats_parts.append(f"Abstentions : {s['nombre_abstentions']}")
     stats_line = " · ".join(stats_parts)
 
-    if sort:
-        header_prefix = f"{emoji} {sort.capitalize()} — "
-    else:
-        header_prefix = f"{emoji} "
-
-    # Calcul de l'espace disponible pour le titre
-    # Structure : "{header_prefix}{titre}\n\n{stats_line}\n\n{footer}"
     overhead = len(header_prefix) + 4 + len(stats_line) + len(footer)
-    available = MAX_POST_LENGTH - overhead
-
-    titre = s["titre"] or ""
-    if available > 10:
-        titre = _truncate(titre, available)
-    else:
-        titre = ""
+    titre = _titre_tronque(s["titre"] or "", overhead)
 
     body = f"{header_prefix}{titre}"
     if stats_line:
         body += f"\n\n{stats_line}"
     body += f"\n\n{footer}"
-
     return body
+
+
+def _formate_post(s: dict) -> tuple[str, str]:
+    """Retourne (texte_post, url_path) selon le type de scrutin."""
+    url_path = f"les577.fr/votes/{s['id']}"
+    type_vote = (s["type_vote"] or "").lower()
+    pour = s["nombre_pours"] or 0
+    contre = s["nombre_contres"] or 0
+
+    if type_vote == "motion de censure":
+        return _formate_motion_de_censure(s), url_path
+
+    if abs(pour - contre) <= SEUIL_SERRE and (pour + contre) > 0:
+        return _formate_serre(s), url_path
+
+    return _formate_solennel(s), url_path
 
 
 # ---------------------------------------------------------------------------
@@ -257,8 +342,7 @@ async def _main() -> dict:
 
             async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
                 for s in scrutins:
-                    text = _formate_post(s)
-                    url_path = f"les577.fr/votes/{s['id']}"
+                    text, url_path = _formate_post(s)
                     logger.info(
                         "Post scrutin %s (%d chars) : %s",
                         s["id"],
