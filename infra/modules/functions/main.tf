@@ -41,6 +41,12 @@ resource "scaleway_function_cron" "scrutins_daily" {
   args        = jsonencode({ type = "scrutins" })
 }
 
+resource "scaleway_function_cron" "scrutins_session" {
+  function_id = scaleway_function.ingest_scrutins.id
+  schedule    = "0,30 13-21 * * 1-6" # Toutes les 30 min, 13h-21h UTC (15h-23h Paris), lun-sam
+  args        = jsonencode({ type = "scrutins" })
+}
+
 resource "scaleway_function" "ingest_organes" {
   name         = "ingest-organes"
   namespace_id = scaleway_function_namespace.main.id
@@ -228,4 +234,36 @@ resource "scaleway_function_cron" "datan_weekly" {
   function_id = scaleway_function.ingest_datan.id
   schedule    = "0 3 * * 2" # Mardi 03:00 UTC (datasets MAJ hebdo)
   args        = jsonencode({ type = "datan" })
+}
+
+resource "scaleway_function" "post_scrutins_bluesky" {
+  name         = "post-scrutins-bluesky"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "post_scrutins.handle"
+  privacy      = "private"
+  timeout      = 60
+  max_scale    = 1
+  memory_limit = 128
+  zip_file     = "functions/post_scrutins.zip"
+  zip_hash     = try(filesha256("functions/post_scrutins.zip"), "")
+  deploy       = true
+
+  secret_environment_variables = {
+    DATABASE_URL      = var.database_url
+    BSKY_IDENTIFIER   = var.bsky_identifier
+    BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+}
+
+resource "scaleway_function_cron" "post_scrutins_bluesky_session" {
+  function_id = scaleway_function.post_scrutins_bluesky.id
+  schedule    = "10,40 13-21 * * 1-6" # 10 min après l'ingestion, 13h-21h UTC, lun-sam
+  args        = jsonencode({})
+}
+
+resource "scaleway_function_cron" "post_scrutins_bluesky_morning" {
+  function_id = scaleway_function.post_scrutins_bluesky.id
+  schedule    = "10 6 * * *" # 06:10 UTC — rattrapage après ingestion matinale
+  args        = jsonencode({})
 }

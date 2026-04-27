@@ -169,6 +169,9 @@ class Scrutin(Base):
     objet_libelle: Mapped[Optional[str]] = mapped_column(Text)
     dossier_ref: Mapped[Optional[str]] = mapped_column(String(50), index=True)
     dossier_libelle: Mapped[Optional[str]] = mapped_column(Text)
+    bluesky_posted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     seance_id: Mapped[Optional[str]] = mapped_column(
         ForeignKey("seances.id"), nullable=True, index=True
     )

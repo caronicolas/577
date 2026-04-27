@@ -9,7 +9,10 @@ from db.models import Base
 
 config = context.config
 # Use %% to escape % chars in configparser interpolation (e.g. URL-encoded passwords)
-config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+# Respect URL already set by caller (e.g. conftest), fall back to settings
+_configured_url = config.get_main_option("sqlalchemy.url", default=None)
+if not _configured_url:
+    config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -38,7 +41,8 @@ def do_run_migrations(connection):
 async def run_async_migrations() -> None:
     from sqlalchemy.ext.asyncio import create_async_engine
 
-    connectable = create_async_engine(settings.database_url, poolclass=NullPool)
+    url = config.get_main_option("sqlalchemy.url").replace("%%", "%")
+    connectable = create_async_engine(url, poolclass=NullPool)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
