@@ -267,3 +267,29 @@ resource "scaleway_function_cron" "post_scrutins_bluesky_morning" {
   schedule    = "10 6 * * *" # 06:10 UTC — rattrapage après ingestion matinale
   args        = jsonencode({})
 }
+
+resource "scaleway_function" "post_stats_hebdo_bluesky" {
+  name         = "post-stats-hebdo-bluesky"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "post_stats_hebdo.handle"
+  privacy      = "private"
+  timeout      = 60
+  max_scale    = 1
+  memory_limit = 128
+  zip_file     = "functions/post_stats_hebdo.zip"
+  zip_hash     = try(filesha256("functions/post_stats_hebdo.zip"), "")
+  deploy       = true
+
+  secret_environment_variables = {
+    DATABASE_URL      = var.database_url
+    BSKY_IDENTIFIER   = var.bsky_identifier
+    BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+}
+
+resource "scaleway_function_cron" "post_stats_hebdo_weekly" {
+  function_id = scaleway_function.post_stats_hebdo_bluesky.id
+  schedule    = "0 8 * * 1" # Lundi 08:00 UTC — stats de la semaine écoulée
+  args        = jsonencode({})
+}

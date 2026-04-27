@@ -54,6 +54,7 @@ build_zip "amendements" "$INGESTION_DIR"
 build_zip "post_agenda"       "$BLUESKY_DIR"
 build_zip "post_commissions" "$BLUESKY_DIR"
 build_zip "post_scrutins"    "$BLUESKY_DIR"
+build_zip "post_stats_hebdo" "$BLUESKY_DIR"
 build_zip "datan"       "$GOUV_DIR"
 
 rm -rf "$TMP_DIR"
