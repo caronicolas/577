@@ -9,6 +9,7 @@
     { href: '/groupes', label: 'Groupes' },
     { href: '/votes', label: 'Votes' },
     { href: '/agenda', label: 'Agenda' },
+    { href: '/a-propos', label: 'À propos' },
   ];
 
   let menuOpen = $state(false);
