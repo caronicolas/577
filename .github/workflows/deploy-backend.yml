@@ -107,7 +107,16 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: alembic upgrade head
-        run: alembic upgrade head
+        run: |
+          python - <<'EOF'
+          import os
+          from alembic.config import Config
+          from alembic import command
+          url = os.environ["DATABASE_URL"]
+          cfg = Config("alembic.ini")
+          cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
+          command.upgrade(cfg, "head")
+          EOF
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
