@@ -2,6 +2,7 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { dev } from '$app/environment';
+  import SearchModal from '$lib/components/SearchModal.svelte';
 
   const navLinks = [
     { href: '/', label: 'Hémicycle' },
@@ -13,6 +14,7 @@
   ];
 
   let menuOpen = $state(false);
+  let searchOpen = $state(false);
 
   function closeMenu() {
     menuOpen = false;
@@ -23,7 +25,16 @@
     $page.url.pathname;
     menuOpen = false;
   });
+
+  function handleGlobalKeydown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      searchOpen = true;
+    }
+  }
 </script>
+
+<svelte:window onkeydown={handleGlobalKeydown} />
 
 <svelte:head>
   <link rel="canonical" href="https://les577.fr{$page.url.pathname}" />
@@ -70,6 +81,14 @@
       {/each}
     </ul>
 
+    <!-- Bouton recherche -->
+    <button class="search-btn" onclick={() => (searchOpen = true)} aria-label="Rechercher (Cmd+K)">
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+
     <!-- Burger mobile -->
     <button
       class="burger"
@@ -98,6 +117,8 @@
     </ul>
   {/if}
 </header>
+
+<SearchModal open={searchOpen} onclose={() => (searchOpen = false)} />
 
 <main class="container">
   <slot />
@@ -184,6 +205,34 @@
     text-decoration: none;
   }
 
+  /* Search button */
+  .search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 6px;
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--color-text-muted);
+    margin-left: auto;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .search-btn:hover {
+    background: var(--color-border);
+    color: var(--color-text);
+  }
+
+  .search-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
   /* Burger button */
   .burger {
     display: none;
@@ -196,7 +245,6 @@
     background: none;
     border: none;
     cursor: pointer;
-    margin-left: auto;
     border-radius: var(--radius-sm);
   }
 
