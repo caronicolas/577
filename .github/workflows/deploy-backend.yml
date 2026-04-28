@@ -106,13 +106,27 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: alembic upgrade head
+      - name: Diagnose DATABASE_URL format
         run: |
           python - <<'EOF'
           import os
+          url = os.environ.get("DATABASE_URL", "")
+          scheme = url.split("://")[0] if "://" in url else "NO_SCHEME"
+          print(f"URL length: {len(url)}")
+          print(f"URL scheme: {scheme}")
+          EOF
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: alembic upgrade head
+        run: |
+          python - <<'EOF'
+          import os, re
           from alembic.config import Config
           from alembic import command
           url = os.environ["DATABASE_URL"]
+          # Normalise postgres:// → postgresql+asyncpg://
+          url = re.sub(r"^postgres(ql)?://", "postgresql+asyncpg://", url)
           cfg = Config("alembic.ini")
           cfg.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
           command.upgrade(cfg, "head")
