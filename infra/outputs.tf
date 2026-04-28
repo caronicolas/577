@@ -13,3 +13,9 @@ output "db_endpoint" {
   value       = module.database.host
   sensitive   = true
 }
+
+output "database_connection_url" {
+  description = "URL de connexion PostgreSQL complète (postgresql+asyncpg://...)"
+  value       = module.database.connection_url
+  sensitive   = true
+}
