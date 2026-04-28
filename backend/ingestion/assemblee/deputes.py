@@ -25,6 +25,11 @@ ZIP_URL = (
     "/17/amo/deputes_actifs_mandats_actifs_organes"
     "/AMO10_deputes_actifs_mandats_actifs_organes.json.zip"
 )
+ZIP_URL_HISTORIQUE = (
+    "https://data.assemblee-nationale.fr/static/openData/repository"
+    "/17/amo/tous_acteurs_mandats_organes_xi_legislature"
+    "/AMO30_tous_acteurs_tous_mandats_tous_organes_historique.json.zip"
+)
 LEGISLATURE = 17
 
 
@@ -190,10 +195,9 @@ def _normalise_acteur(acteur: dict) -> DeputeNormalise | None:
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
-async def _download_zip(client: httpx.AsyncClient) -> bytes:
-    """Télécharge l'archive ZIP des députés en exercice."""
-    logger.info("Téléchargement ZIP : %s", ZIP_URL)
-    r = await client.get(ZIP_URL, timeout=120, follow_redirects=True)
+async def _download_zip(client: httpx.AsyncClient, url: str = ZIP_URL) -> bytes:
+    logger.info("Téléchargement ZIP : %s", url)
+    r = await client.get(url, timeout=180, follow_redirects=True)
     r.raise_for_status()
     return r.content
 
@@ -233,6 +237,54 @@ async def fetch_all_deputes() -> list[DeputeNormalise]:
 
     deputes = _parse_zip(content)
     logger.info("%d députés récupérés (législature %d)", len(deputes), LEGISLATURE)
+    return deputes
+
+
+def _parse_zip_historique(content: bytes) -> list[DeputeNormalise]:
+    """Parse le ZIP historique en ne gardant que les acteurs ayant un mandat
+    en tant que député dans la 17e législature."""
+    deputes: list[DeputeNormalise] = []
+    errors = 0
+
+    with zipfile.ZipFile(io.BytesIO(content)) as zf:
+        json_files = [name for name in zf.namelist() if name.endswith(".json")]
+        logger.info("%d fichiers JSON dans le ZIP historique", len(json_files))
+
+        for name in json_files:
+            try:
+                data = json.loads(zf.read(name))
+                acteur = data.get("acteur", data)
+                mandats = _as_list(acteur.get("mandats", {}).get("mandat"))
+                has_17 = any(
+                    m.get("typeOrgane") == "ASSEMBLEE"
+                    and str(m.get("legislature", "")) == str(LEGISLATURE)
+                    for m in mandats
+                )
+                if not has_17:
+                    continue
+                d = _normalise_acteur(acteur)
+                if d:
+                    deputes.append(d)
+            except Exception:
+                logger.warning("Fichier historique ignoré : %s", name, exc_info=True)
+                errors += 1
+
+    if errors:
+        logger.warning("%d fichiers historiques n'ont pas pu être parsés", errors)
+
+    return deputes
+
+
+async def fetch_deputes_historiques() -> list[DeputeNormalise]:
+    async with httpx.AsyncClient() as client:
+        content = await _download_zip(client, url=ZIP_URL_HISTORIQUE)
+
+    deputes = _parse_zip_historique(content)
+    logger.info(
+        "%d ex-députés récupérés depuis le ZIP historique (législature %d)",
+        len(deputes),
+        LEGISLATURE,
+    )
     return deputes
 
 
@@ -324,6 +376,63 @@ _UPSERT = """
 """
 
 
+_INSERT_HISTORIQUE = """
+    INSERT INTO deputes (
+        id, nom, prenom, nom_de_famille, sexe, date_naissance, profession,
+        num_departement, nom_circonscription, num_circonscription,
+        place_hemicycle, url_photo, url_an, mandat_debut, mandat_fin,
+        actif, legislature, groupe_id, updated_at
+    ) VALUES (
+        %(id)s, %(nom)s, %(prenom)s, %(nom_de_famille)s, %(sexe)s,
+        %(date_naissance)s, %(profession)s, %(num_departement)s,
+        %(nom_circonscription)s, %(num_circonscription)s, %(place_hemicycle)s,
+        %(url_photo)s, %(url_an)s, %(mandat_debut)s, %(mandat_fin)s,
+        false, %(legislature)s, %(groupe_id)s, now()
+    )
+    ON CONFLICT (id) DO NOTHING
+"""
+
+
+async def upsert_deputes_historiques(deputes: list[DeputeNormalise]) -> int:
+    """Insère les ex-députés manquants avec actif=false.
+    ON CONFLICT DO NOTHING : ne touche pas aux députés déjà en base (actifs).
+    """
+    async with await psycopg.AsyncConnection.connect(**_get_conn_params()) as conn:
+        rows = await conn.execute("SELECT id FROM organes")
+        valid_organe_ids = {r[0] async for r in rows}
+
+        inserted = 0
+        for d in deputes:
+            groupe_id = d.groupe_id if d.groupe_id in valid_organe_ids else None
+            cur = await conn.execute(
+                _INSERT_HISTORIQUE,
+                {
+                    "id": d.id,
+                    "nom": d.nom,
+                    "prenom": d.prenom,
+                    "nom_de_famille": d.nom_de_famille,
+                    "sexe": d.sexe,
+                    "date_naissance": d.date_naissance,
+                    "profession": d.profession,
+                    "num_departement": d.num_departement,
+                    "nom_circonscription": d.nom_circonscription,
+                    "num_circonscription": d.num_circonscription,
+                    "place_hemicycle": d.place_hemicycle,
+                    "url_photo": d.url_photo,
+                    "url_an": d.url_an,
+                    "mandat_debut": d.mandat_debut,
+                    "mandat_fin": d.mandat_fin,
+                    "legislature": d.legislature,
+                    "groupe_id": groupe_id,
+                },
+            )
+            inserted += cur.rowcount
+        await conn.commit()
+        logger.info("%d ex-députés insérés depuis le ZIP historique", inserted)
+
+    return inserted
+
+
 async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:
     async with await psycopg.AsyncConnection.connect(**_get_conn_params()) as conn:
         # Récupère les IDs d'organes valides pour filtrer en Python (évite
@@ -382,10 +491,16 @@ async def upsert_deputes(deputes: list[DeputeNormalise]) -> int:
 
 async def _main() -> dict:
     logger.info("Démarrage ingestion députés — législature %d", LEGISLATURE)
+
     deputes = await fetch_all_deputes()
     count = await upsert_deputes(deputes)
-    logger.info("Terminé : %d députés upsertés", count)
-    return {"status": "ok", "upserted": count}
+    logger.info("%d députés actifs upsertés", count)
+
+    deputes_histo = await fetch_deputes_historiques()
+    count_histo = await upsert_deputes_historiques(deputes_histo)
+    logger.info("%d ex-députés insérés depuis l'historique", count_histo)
+
+    return {"status": "ok", "upserted": count, "historique_inserted": count_histo}
 
 
 def handle(event: dict, context: object) -> dict:
