@@ -242,12 +242,9 @@
       {:else}
         <ul class="list">
           {#each votes as v (v.id)}
-            <li class="list-item">
+            <li class="list-item" data-pos={v.position ?? ''}>
               <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
                 <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
-                {#if v.position}
-                  <span class="vote-pos" data-pos={v.position}>{v.position}</span>
-                {/if}
               </a>
             </li>
           {/each}
@@ -262,18 +259,23 @@
       {:else}
         <ul class="list">
           {#each amendements as a (a.id)}
-            <li class="list-item">
+            <li class="list-item" data-sort={a.sort ?? ''}>
               <a href={a.url_an} target="_blank" rel="noopener noreferrer" class="amend-link">
-                <span class="amend-num">N°{a.numero ?? '—'}</span>
-                {#if texteNum(a.texte_legislature)}
-                  <span class="amend-texte">Texte {texteNum(a.texte_legislature)}</span>
-                {/if}
-                <span class="amend-titre">{a.titre ?? '—'}</span>
-                {#if a.date_depot}
-                  <span class="amend-date">{a.date_depot}</span>
-                {/if}
-                {#if a.sort}
-                  <span class="amend-sort" data-sort={a.sort}>{a.sort}</span>
+                <div class="amend-meta">
+                  <span class="amend-num">N°{a.numero ?? '—'}</span>
+                  {#if texteNum(a.texte_legislature)}
+                    <span class="amend-texte">Texte {texteNum(a.texte_legislature)}</span>
+                  {/if}
+                  <span class="amend-spacer"></span>
+                  {#if a.date_depot}
+                    <span class="amend-date">{a.date_depot}</span>
+                  {/if}
+                  <span class="amend-sort" data-sort={a.sort ?? ''}>{a.sort ?? 'Déposé'}</span>
+                </div>
+                {#if a.expose_sommaire}
+                  <span class="amend-titre">{a.expose_sommaire.slice(0, 120)}{a.expose_sommaire.length > 120 ? '…' : ''}</span>
+                {:else if a.titre}
+                  <span class="amend-titre">{a.titre}</span>
                 {/if}
               </a>
             </li>
@@ -414,22 +416,38 @@
     gap: 1rem;
     align-items: baseline;
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
     font-size: 0.875rem;
   }
 
+  .list-item[data-pos="pour"] { background: rgba(56, 161, 105, 0.2); }
+  .list-item[data-pos="contre"] { background: rgba(229, 62, 62, 0.2); }
+  .list-item[data-pos="abstention"] { background: rgba(107, 107, 102, 0.2); }
+  .list-item[data-pos="pour"] .vote-link { border-left-color: var(--color-vote); }
+  .list-item[data-pos="contre"] .vote-link { border-left-color: var(--color-absent); }
+  .list-item[data-pos="abstention"] .vote-link { border-left-color: var(--color-text-muted); }
+
   .amend-link {
     display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
+    flex-direction: column;
+    gap: 0.2rem;
     width: 100%;
     color: var(--color-text);
     text-decoration: none;
     font-size: 0.875rem;
-    flex-wrap: wrap;
+    border-left: 3px solid transparent;
+    padding-left: 0.5rem;
   }
 
-  .amend-link:hover { text-decoration: none; background: var(--color-bg); }
+  .amend-link:hover { text-decoration: none; }
+
+  .amend-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .amend-spacer { flex: 1; }
 
   .amend-num {
     font-family: var(--font-mono);
@@ -448,7 +466,7 @@
     border-radius: 3px;
   }
 
-  .amend-titre { flex: 1; color: var(--color-text-muted); }
+  .amend-titre { font-size: 0.8rem; color: var(--color-text-muted); }
 
   .amend-date {
     font-family: var(--font-mono);
@@ -457,7 +475,16 @@
     flex-shrink: 0;
   }
 
-  .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+  .list-item[data-sort="Adopté"] { background: rgba(56, 161, 105, 0.2); }
+  .list-item[data-sort="Rejeté"] { background: rgba(229, 62, 62, 0.2); }
+  .list-item[data-sort="Retiré"],
+  .list-item[data-sort="Tombé"] { background: rgba(107, 107, 102, 0.2); }
+  .list-item[data-sort="Adopté"] .amend-link { border-left-color: var(--color-vote); }
+  .list-item[data-sort="Rejeté"] .amend-link { border-left-color: var(--color-absent); }
+  .list-item[data-sort="Retiré"] .amend-link,
+  .list-item[data-sort="Tombé"] .amend-link { border-left-color: var(--color-text-muted); }
+
+  .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; margin-left: 0.25rem; color: var(--color-text-muted); }
   .amend-sort[data-sort="Adopté"] { color: var(--color-vote); }
   .amend-sort[data-sort="Rejeté"] { color: var(--color-absent); }
 
@@ -465,21 +492,17 @@
     display: flex;
     gap: 0.5rem;
     align-items: baseline;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--color-border);
     font-size: 0.875rem;
     color: var(--color-text);
     width: 100%;
+    border-left: 3px solid transparent;
+    padding-left: 0.5rem;
   }
 
-  .vote-link:hover { text-decoration: none; background: var(--color-bg); }
+  .vote-link:hover { text-decoration: none; }
+
 
   .vote-titre { flex: 1; }
-
-  .vote-pos { flex-shrink: 0; font-size: 0.75rem; font-weight: 600; }
-  .vote-pos[data-pos="Pour"] { color: var(--color-vote); }
-  .vote-pos[data-pos="Contre"] { color: var(--color-absent); }
-  .vote-pos[data-pos="Abstention"] { color: var(--color-text-muted); }
 
   .muted { color: var(--color-text-muted); }
 
