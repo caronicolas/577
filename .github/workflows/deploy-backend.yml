@@ -169,4 +169,4 @@ jobs:
         run: |
           terraform init -backend-config="access_key=${{ secrets.SCW_ACCESS_KEY }}" \
                          -backend-config="secret_key=${{ secrets.SCW_SECRET_KEY }}"
-          terraform apply -auto-approve -target=module.containers
+          terraform apply -auto-approve -target=module.containers -target=module.functions

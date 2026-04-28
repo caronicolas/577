@@ -71,12 +71,15 @@ async def _get_scrutins_a_poster() -> list[dict]:
     async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
         rows = await conn.execute(
             """
-            SELECT id, titre, date_seance, type_vote, sort,
-                   nombre_pours, nombre_contres, nombre_abstentions
-            FROM scrutins
-            WHERE bluesky_posted_at IS NULL
-              AND type_vote = ANY(%s)
-            ORDER BY date_seance DESC, id DESC
+            SELECT s.id, s.titre, s.date_seance, s.type_vote, s.sort,
+                   s.nombre_pours, s.nombre_contres, s.nombre_abstentions,
+                   d.prenom, d.nom_de_famille, d.bluesky_url
+            FROM scrutins s
+            LEFT JOIN amendements a ON a.id = s.ref_amendement
+            LEFT JOIN deputes d ON d.id = a.depute_id
+            WHERE s.bluesky_posted_at IS NULL
+              AND s.type_vote = ANY(%s)
+            ORDER BY s.date_seance DESC, s.id DESC
             LIMIT 10
             """,
             (list(TYPES_A_POSTER),),
@@ -93,6 +96,9 @@ async def _get_scrutins_a_poster() -> list[dict]:
                     "nombre_pours": row[5],
                     "nombre_contres": row[6],
                     "nombre_abstentions": row[7],
+                    "depute_prenom": row[8],
+                    "depute_nom": row[9],
+                    "depute_bluesky_url": row[10],
                 }
             )
     return scrutins
@@ -229,20 +235,84 @@ def _formate_solennel(s: dict) -> str:
     return body
 
 
-def _formate_post(s: dict) -> tuple[str, str]:
-    """Retourne (texte_post, url_path) selon le type de scrutin."""
+def _extract_bsky_handle(url: str) -> str:
+    """Extrait le handle depuis 'https://bsky.app/profile/handle.bsky.social'."""
+    if not url:
+        return ""
+    handle = url.rstrip("/").split("/")[-1]
+    return handle if "." in handle else ""
+
+
+def _formate_amendement(s: dict) -> str:
+    """
+    ✅ Adopté — amendement de @handle.bsky.social
+    (ou ✅ Adopté — amendement de Prénom Nom)
+
+    Titre du scrutin…
+
+    Pour : 320 · Contre : 210 · Abstentions : 12
+
+    👉 les577.fr/votes/:id
+    """
+    sort = s["sort"] or ""
+    emoji = "✅" if sort == "adopté" else ("❌" if sort == "rejeté" else "🗳️")
+    url_path = f"les577.fr/votes/{s['id']}"
+    footer = f"👉 {url_path}"
+
+    bsky_handle = _extract_bsky_handle(s.get("depute_bluesky_url") or "")
+    if bsky_handle:
+        depute_ref = f"@{bsky_handle}"
+    else:
+        prenom = s.get("depute_prenom") or ""
+        nom = s.get("depute_nom") or ""
+        depute_ref = f"{prenom} {nom}".strip()
+
+    sort_label = sort.capitalize() if sort else ""
+    if sort_label:
+        header = f"{emoji} {sort_label} — amendement de {depute_ref}"
+    else:
+        header = f"{emoji} Amendement de {depute_ref}"
+
+    stats_parts = []
+    if s["nombre_pours"] is not None:
+        stats_parts.append(f"Pour : {s['nombre_pours']}")
+    if s["nombre_contres"] is not None:
+        stats_parts.append(f"Contre : {s['nombre_contres']}")
+    if s["nombre_abstentions"] is not None:
+        stats_parts.append(f"Abstentions : {s['nombre_abstentions']}")
+    stats_line = " · ".join(stats_parts)
+
+    overhead = len(header) + 4 + len(stats_line) + len(footer)
+    titre = _titre_tronque(s["titre"] or "", overhead)
+
+    body = header
+    if titre:
+        body += f"\n\n{titre}"
+    if stats_line:
+        body += f"\n\n{stats_line}"
+    body += f"\n\n{footer}"
+    return body
+
+
+def _formate_post(s: dict) -> tuple[str, str, str]:
+    """Retourne (texte_post, url_path, bsky_handle) selon le type de scrutin."""
     url_path = f"les577.fr/votes/{s['id']}"
     type_vote = (s["type_vote"] or "").lower()
     pour = s["nombre_pours"] or 0
     contre = s["nombre_contres"] or 0
 
     if type_vote == "motion de censure":
-        return _formate_motion_de_censure(s), url_path
+        return _formate_motion_de_censure(s), url_path, ""
 
     if abs(pour - contre) <= SEUIL_SERRE and (pour + contre) > 0:
-        return _formate_serre(s), url_path
+        return _formate_serre(s), url_path, ""
 
-    return _formate_solennel(s), url_path
+    depute_nom = s.get("depute_nom")
+    if depute_nom:
+        bsky_handle = _extract_bsky_handle(s.get("depute_bluesky_url") or "")
+        return _formate_amendement(s), url_path, bsky_handle
+
+    return _formate_solennel(s), url_path, ""
 
 
 # ---------------------------------------------------------------------------
@@ -263,26 +333,50 @@ async def _create_session(client: httpx.AsyncClient) -> dict:
     return r.json()
 
 
-def _build_facets(text: str, url_path: str) -> list[dict]:
+def _build_facets(text: str, url_path: str, bsky_handle: str = "") -> list[dict]:
     text_bytes = text.encode("utf-8")
-    start = text_bytes.find(url_path.encode("utf-8"))
-    if start < 0:
-        return []
-    return [
-        {
-            "$type": "app.bsky.richtext.facet",
-            "index": {
-                "byteStart": start,
-                "byteEnd": start + len(url_path.encode("utf-8")),
-            },
-            "features": [
+    facets = []
+
+    url_bytes = url_path.encode("utf-8")
+    start = text_bytes.find(url_bytes)
+    if start >= 0:
+        facets.append(
+            {
+                "$type": "app.bsky.richtext.facet",
+                "index": {
+                    "byteStart": start,
+                    "byteEnd": start + len(url_bytes),
+                },
+                "features": [
+                    {
+                        "$type": "app.bsky.richtext.facet#link",
+                        "uri": f"https://{url_path}",
+                    }
+                ],
+            }
+        )
+
+    if bsky_handle:
+        handle_bytes = f"@{bsky_handle}".encode("utf-8")
+        h_start = text_bytes.find(handle_bytes)
+        if h_start >= 0:
+            facets.append(
                 {
-                    "$type": "app.bsky.richtext.facet#link",
-                    "uri": f"https://{url_path}",
+                    "$type": "app.bsky.richtext.facet",
+                    "index": {
+                        "byteStart": h_start,
+                        "byteEnd": h_start + len(handle_bytes),
+                    },
+                    "features": [
+                        {
+                            "$type": "app.bsky.richtext.facet#link",
+                            "uri": f"https://bsky.app/profile/{bsky_handle}",
+                        }
+                    ],
                 }
-            ],
-        }
-    ]
+            )
+
+    return facets
 
 
 async def _create_record(
@@ -290,6 +384,7 @@ async def _create_record(
     session: dict,
     text: str,
     url_path: str,
+    bsky_handle: str = "",
 ) -> dict:
     repo = session["did"]
     token = session["accessJwt"]
@@ -301,7 +396,7 @@ async def _create_record(
         "createdAt": now,
         "langs": ["fr"],
     }
-    facets = _build_facets(text, url_path)
+    facets = _build_facets(text, url_path, bsky_handle)
     if facets:
         record["facets"] = facets
 
@@ -342,7 +437,7 @@ async def _main() -> dict:
 
             async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
                 for s in scrutins:
-                    text, url_path = _formate_post(s)
+                    text, url_path, bsky_handle = _formate_post(s)
                     logger.info(
                         "Post scrutin %s (%d chars) : %s",
                         s["id"],
@@ -350,7 +445,9 @@ async def _main() -> dict:
                         text[:80].replace("\n", " "),
                     )
                     try:
-                        result = await _create_record(client, session, text, url_path)
+                        result = await _create_record(
+                            client, session, text, url_path, bsky_handle
+                        )
                         logger.info("Publié : %s", result.get("uri"))
                         await _mark_posted(conn, s["id"])
                         await conn.commit()
