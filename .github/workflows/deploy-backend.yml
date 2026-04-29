@@ -95,7 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
 
@@ -111,7 +111,7 @@ jobs:
           terraform init \
             -backend-config="access_key=${{ secrets.SCW_ACCESS_KEY }}" \
             -backend-config="secret_key=${{ secrets.SCW_SECRET_KEY }}"
-          DB_URL=$(terraform output -raw database_connection_url)
+          DB_URL=$(terraform output -raw database_connection_url 2>&1 | tail -1)
           echo "::add-mask::$DB_URL"
           echo "db_url=$DB_URL" >> "$GITHUB_OUTPUT"
 
@@ -153,7 +153,7 @@ jobs:
       - name: Build ZIPs (requis par filesha256 dans module.functions)
         run: bash backend/ingestion/build_functions.sh
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform apply
         working-directory: infra

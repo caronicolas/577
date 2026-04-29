@@ -30,7 +30,7 @@ jobs:
         working-directory: .
         run: bash backend/ingestion/build_functions.sh
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform Init
         env:
@@ -84,7 +84,7 @@ jobs:
         working-directory: .
         run: bash backend/ingestion/build_functions.sh
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Download plan
         uses: actions/download-artifact@v4
