@@ -9,11 +9,10 @@ on:
         default: "organes deputes"
 
 jobs:
-  get-db-url:
-    name: Récupérer l'URL DB depuis Terraform
+  ingest:
+    name: Lancer ingestion sur production
     runs-on: ubuntu-latest
-    outputs:
-      db_url: ${{ steps.db-url.outputs.db_url }}
+
     steps:
       - uses: actions/checkout@v5
 
@@ -21,7 +20,7 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Get connection URL from Terraform state
+      - name: Récupérer l'URL DB depuis Terraform
         id: db-url
         working-directory: infra
         env:
@@ -35,18 +34,7 @@ jobs:
             -backend-config="secret_key=${{ secrets.SCW_SECRET_KEY }}"
           DB_URL=$(terraform output -raw database_connection_url)
           echo "::add-mask::$DB_URL"
-          echo "db_url=$DB_URL" >> "$GITHUB_OUTPUT"
-
-  ingest:
-    name: Lancer ingestion sur production
-    needs: get-db-url
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-
-    steps:
-      - uses: actions/checkout@v5
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
 
       - uses: actions/setup-python@v6
         with:
@@ -55,27 +43,24 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - run: pip install -r requirements.txt
+        working-directory: backend
 
       - name: organes.py
         if: contains(github.event.inputs.scripts, 'organes')
+        working-directory: backend
         run: python -m ingestion.assemblee.organes
-        env:
-          DATABASE_URL: ${{ needs.get-db-url.outputs.db_url }}
 
       - name: deputes.py
         if: contains(github.event.inputs.scripts, 'deputes')
+        working-directory: backend
         run: python -m ingestion.assemblee.deputes
-        env:
-          DATABASE_URL: ${{ needs.get-db-url.outputs.db_url }}
 
       - name: datan.py
         if: contains(github.event.inputs.scripts, 'datan')
+        working-directory: backend
         run: python -m ingestion.gouv.datan
-        env:
-          DATABASE_URL: ${{ needs.get-db-url.outputs.db_url }}
 
       - name: agenda.py
         if: contains(github.event.inputs.scripts, 'agenda')
+        working-directory: backend
         run: python -m ingestion.assemblee.agenda
-        env:
-          DATABASE_URL: ${{ needs.get-db-url.outputs.db_url }}
