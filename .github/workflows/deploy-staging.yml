@@ -171,7 +171,7 @@ jobs:
         id: tf-output
         working-directory: infra/staging
         run: |
-          API_URL=$(terraform output -raw api_url 2>/dev/null)
+          API_URL=$(terraform output -raw api_url 2>&1 | tail -1)
           echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
 
   migrate-staging:
