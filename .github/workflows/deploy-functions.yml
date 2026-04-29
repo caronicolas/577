@@ -24,7 +24,7 @@ jobs:
         run: bash backend/ingestion/build_functions.sh
 
       # -- Terraform apply module functions -----------------------------------
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform Init
         working-directory: infra
