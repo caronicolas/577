@@ -23,7 +23,7 @@ resource "scaleway_function" "ingest_scrutins" {
   max_scale    = 1
   memory_limit = 1024
   zip_file     = "functions/scrutins.zip"
-  zip_hash     = try(filesha256("functions/scrutins.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "scrutins", "")
   deploy       = true
 
   environment_variables = {
@@ -57,7 +57,7 @@ resource "scaleway_function" "ingest_organes" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/organes.zip"
-  zip_hash     = try(filesha256("functions/organes.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "organes", "")
   deploy       = true
 
   environment_variables = {
@@ -85,7 +85,7 @@ resource "scaleway_function" "ingest_deputes" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/deputes.zip"
-  zip_hash     = try(filesha256("functions/deputes.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "deputes", "")
   deploy       = true
 
   environment_variables = {
@@ -114,7 +114,7 @@ resource "scaleway_function" "ingest_agenda" {
   max_scale    = 1
   memory_limit = 512
   zip_file     = "functions/agenda.zip"
-  zip_hash     = try(filesha256("functions/agenda.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "agenda", "")
   deploy       = true
 
   secret_environment_variables = {
@@ -138,7 +138,7 @@ resource "scaleway_function" "ingest_amendements" {
   max_scale    = 1
   memory_limit = 1024
   zip_file     = "functions/amendements.zip"
-  zip_hash     = try(filesha256("functions/amendements.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "amendements", "")
   deploy       = true
 
   environment_variables = {
@@ -166,7 +166,7 @@ resource "scaleway_function" "post_agenda_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_agenda.zip"
-  zip_hash     = try(filesha256("functions/post_agenda.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "post_agenda", "")
   deploy       = true
 
   secret_environment_variables = {
@@ -192,7 +192,7 @@ resource "scaleway_function" "post_commissions_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_commissions.zip"
-  zip_hash     = try(filesha256("functions/post_commissions.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "post_commissions", "")
   deploy       = true
 
   secret_environment_variables = {
@@ -218,7 +218,7 @@ resource "scaleway_function" "ingest_datan" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/datan.zip"
-  zip_hash     = try(filesha256("functions/datan.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "datan", "")
   deploy       = true
 
   environment_variables = {
@@ -246,7 +246,7 @@ resource "scaleway_function" "post_scrutins_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_scrutins.zip"
-  zip_hash     = try(filesha256("functions/post_scrutins.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "post_scrutins", "")
   deploy       = true
 
   secret_environment_variables = {
@@ -278,7 +278,7 @@ resource "scaleway_function" "post_stats_hebdo_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_stats_hebdo.zip"
-  zip_hash     = try(filesha256("functions/post_stats_hebdo.zip"), "")
+  zip_hash     = lookup(var.zip_hashes, "post_stats_hebdo", "")
   deploy       = true
 
   secret_environment_variables = {

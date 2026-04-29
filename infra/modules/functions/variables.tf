@@ -25,3 +25,9 @@ variable "bsky_app_password" {
   sensitive = true
 }
 
+variable "zip_hashes" {
+  description = "SHA-256 de chaque ZIP de fonction, calculé depuis le module racine"
+  type        = map(string)
+  default     = {}
+}
+
