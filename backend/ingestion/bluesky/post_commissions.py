@@ -1,5 +1,6 @@
 """
-Poste les réunions de commission AN démarrant dans la prochaine fenêtre de 15 min.
+Poste les réunions de commission AN non encore postées dont l'heure de début
+est inférieure ou égale à maintenant + 15 min (heure Paris).
 Handler Scaleway : handle(event, context)
 CRON recommandé : */15 * * * *
 
@@ -12,7 +13,7 @@ Variables d'environnement requises :
 import asyncio
 import logging
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import unquote
 
 import httpx
@@ -61,16 +62,14 @@ def _get_conn_params() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Lecture des réunions imminentes
+# Lecture des réunions à poster
 # ---------------------------------------------------------------------------
 
 
-async def _get_reunions_imminentes(
-    today: date, heure_debut: str, heure_fin: str
-) -> list[dict]:
+async def _get_reunions_a_poster(today: str, heure_limite: str) -> list[dict]:
     """
-    Retourne les réunions de commission AN non-Sénat démarrant entre heure_debut
-    (inclus) et heure_fin (exclus), au format HH:MM.
+    Retourne les réunions de commission AN non-Sénat non encore postées
+    dont heure_debut <= heure_limite (format HH:MM), pour la date donnée.
     """
     conn_params = _get_conn_params()
     async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
@@ -80,12 +79,11 @@ async def _get_reunions_imminentes(
             FROM reunions_commission
             WHERE date = %s
               AND is_senat = false
-              AND heure_debut >= %s
-              AND heure_debut < %s
-
+              AND bluesky_posted_at IS NULL
+              AND heure_debut <= %s
             ORDER BY heure_debut, id
             """,
-            (today, heure_debut, heure_fin),
+            (today, heure_limite),
         )
         reunions = []
         for row in await rows.fetchall():
@@ -99,6 +97,13 @@ async def _get_reunions_imminentes(
                 }
             )
     return reunions
+
+
+async def _mark_posted(conn: psycopg.AsyncConnection, reunion_id: str) -> None:
+    await conn.execute(
+        "UPDATE reunions_commission SET bluesky_posted_at = %s WHERE id = %s",
+        (datetime.now(timezone.utc), reunion_id),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -232,9 +237,7 @@ async def _create_record(
 
 async def _main() -> dict:
     now_utc = datetime.now(timezone.utc)
-    # Heure Paris (UTC+2 en été, UTC+1 en hiver) — on utilise Europe/Paris via offset
-    # Pour éviter une dépendance à pytz/zoneinfo, on calcule l'offset manuellement :
-    # France : UTC+1 (hiver) ou UTC+2 (été, fin mars → fin octobre).
+    # Heure Paris (UTC+2 en été, UTC+1 en hiver)
     # Approximation DST : mois 3 (après le 25) → mois 10 (avant le 25).
     month = now_utc.month
     is_summer = (
@@ -245,49 +248,52 @@ async def _main() -> dict:
     paris_offset = timedelta(hours=2 if is_summer else 1)
     now_paris = now_utc + paris_offset
 
-    today = now_paris.date()
-    # Fenêtre : [maintenant, maintenant + 15 min)
-    window_start = now_paris.strftime("%H:%M")
-    window_end = (now_paris + timedelta(minutes=WINDOW_MINUTES)).strftime("%H:%M")
+    today = now_paris.strftime("%Y-%m-%d")
+    # Limite : maintenant + WINDOW_MINUTES pour annoncer les réunions imminentes
+    heure_limite = (now_paris + timedelta(minutes=WINDOW_MINUTES)).strftime("%H:%M")
 
-    logger.info("Fenêtre : %s → %s (Paris) pour %s", window_start, window_end, today)
+    logger.info("Heure limite : %s (Paris) pour %s", heure_limite, today)
 
-    reunions = await _get_reunions_imminentes(today, window_start, window_end)
+    reunions = await _get_reunions_a_poster(today, heure_limite)
 
     if not reunions:
-        logger.info("Aucune réunion de commission dans la fenêtre — pas de post.")
+        logger.info("Aucune réunion de commission à poster.")
         return {"status": "skipped", "reason": "no_reunions"}
 
     logger.info("%d réunion(s) à poster", len(reunions))
 
     posted = 0
     errors = 0
+    conn_params = _get_conn_params()
 
     try:
         async with httpx.AsyncClient() as client:
             session = await _create_session(client)
             logger.info("Session Bluesky créée pour %s", session.get("handle"))
 
-            for r in reunions:
-                text = _formate_post_commission(r)
-                logger.info(
-                    "Post commission %s (%d graphèmes) : %s",
-                    r["id"],
-                    len(text),
-                    text[:60].replace("\n", " "),
-                )
-                try:
-                    result = await _create_record(client, session, text)
-                    logger.info("Publié : %s", result.get("uri"))
-                    posted += 1
-                except httpx.HTTPStatusError as e:
-                    logger.error(
-                        "Erreur Bluesky pour %s : %s — %s",
+            async with await psycopg.AsyncConnection.connect(**conn_params) as conn:
+                for r in reunions:
+                    text = _formate_post_commission(r)
+                    logger.info(
+                        "Post commission %s (%d graphèmes) : %s",
                         r["id"],
-                        e.response.status_code,
-                        e.response.text,
+                        len(text),
+                        text[:60].replace("\n", " "),
                     )
-                    errors += 1
+                    try:
+                        result = await _create_record(client, session, text)
+                        logger.info("Publié : %s", result.get("uri"))
+                        await _mark_posted(conn, r["id"])
+                        await conn.commit()
+                        posted += 1
+                    except httpx.HTTPStatusError as e:
+                        logger.error(
+                            "Erreur Bluesky pour %s : %s — %s",
+                            r["id"],
+                            e.response.status_code,
+                            e.response.text,
+                        )
+                        errors += 1
 
     except httpx.HTTPStatusError as e:
         return {
