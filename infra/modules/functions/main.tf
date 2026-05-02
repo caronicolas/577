@@ -13,6 +13,56 @@ resource "scaleway_function_namespace" "main" {
   region     = "fr-par"
 }
 
+# ---------------------------------------------------------------------------
+# Triggers de remplacement par ZIP (contourne le bug provider zip_hash)
+# Quand le contenu d'un ZIP change, terraform_data est remplacé, ce qui
+# force le remplacement de la scaleway_function correspondante.
+# ---------------------------------------------------------------------------
+
+resource "terraform_data" "zip_trigger_scrutins" {
+  triggers_replace = lookup(var.zip_hashes, "scrutins", "")
+}
+
+resource "terraform_data" "zip_trigger_organes" {
+  triggers_replace = lookup(var.zip_hashes, "organes", "")
+}
+
+resource "terraform_data" "zip_trigger_deputes" {
+  triggers_replace = lookup(var.zip_hashes, "deputes", "")
+}
+
+resource "terraform_data" "zip_trigger_agenda" {
+  triggers_replace = lookup(var.zip_hashes, "agenda", "")
+}
+
+resource "terraform_data" "zip_trigger_amendements" {
+  triggers_replace = lookup(var.zip_hashes, "amendements", "")
+}
+
+resource "terraform_data" "zip_trigger_post_agenda" {
+  triggers_replace = lookup(var.zip_hashes, "post_agenda", "")
+}
+
+resource "terraform_data" "zip_trigger_post_commissions" {
+  triggers_replace = lookup(var.zip_hashes, "post_commissions", "")
+}
+
+resource "terraform_data" "zip_trigger_datan" {
+  triggers_replace = lookup(var.zip_hashes, "datan", "")
+}
+
+resource "terraform_data" "zip_trigger_post_scrutins" {
+  triggers_replace = lookup(var.zip_hashes, "post_scrutins", "")
+}
+
+resource "terraform_data" "zip_trigger_post_stats_hebdo" {
+  triggers_replace = lookup(var.zip_hashes, "post_stats_hebdo", "")
+}
+
+# ---------------------------------------------------------------------------
+# Fonctions d'ingestion
+# ---------------------------------------------------------------------------
+
 resource "scaleway_function" "ingest_scrutins" {
   name         = "ingest-scrutins"
   namespace_id = scaleway_function_namespace.main.id
@@ -23,7 +73,6 @@ resource "scaleway_function" "ingest_scrutins" {
   max_scale    = 1
   memory_limit = 1024
   zip_file     = "functions/scrutins.zip"
-  zip_hash     = lookup(var.zip_hashes, "scrutins", "")
   deploy       = true
 
   environment_variables = {
@@ -32,6 +81,10 @@ resource "scaleway_function" "ingest_scrutins" {
 
   secret_environment_variables = {
     DATABASE_URL = var.database_url
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_scrutins]
   }
 }
 
@@ -57,7 +110,6 @@ resource "scaleway_function" "ingest_organes" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/organes.zip"
-  zip_hash     = lookup(var.zip_hashes, "organes", "")
   deploy       = true
 
   environment_variables = {
@@ -66,6 +118,10 @@ resource "scaleway_function" "ingest_organes" {
 
   secret_environment_variables = {
     DATABASE_URL = var.database_url
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_organes]
   }
 }
 
@@ -85,7 +141,6 @@ resource "scaleway_function" "ingest_deputes" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/deputes.zip"
-  zip_hash     = lookup(var.zip_hashes, "deputes", "")
   deploy       = true
 
   environment_variables = {
@@ -95,6 +150,10 @@ resource "scaleway_function" "ingest_deputes" {
 
   secret_environment_variables = {
     DATABASE_URL = var.database_url
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_deputes]
   }
 }
 
@@ -114,11 +173,14 @@ resource "scaleway_function" "ingest_agenda" {
   max_scale    = 1
   memory_limit = 512
   zip_file     = "functions/agenda.zip"
-  zip_hash     = lookup(var.zip_hashes, "agenda", "")
   deploy       = true
 
   secret_environment_variables = {
     DATABASE_URL = var.database_url
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_agenda]
   }
 }
 
@@ -138,7 +200,6 @@ resource "scaleway_function" "ingest_amendements" {
   max_scale    = 1
   memory_limit = 1024
   zip_file     = "functions/amendements.zip"
-  zip_hash     = lookup(var.zip_hashes, "amendements", "")
   deploy       = true
 
   environment_variables = {
@@ -148,6 +209,10 @@ resource "scaleway_function" "ingest_amendements" {
   secret_environment_variables = {
     DATABASE_URL = var.database_url
   }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_amendements]
+  }
 }
 
 resource "scaleway_function_cron" "amendements_daily" {
@@ -155,6 +220,10 @@ resource "scaleway_function_cron" "amendements_daily" {
   schedule    = "0 7 * * *" # 07:00 UTC chaque jour
   args        = jsonencode({ type = "amendements" })
 }
+
+# ---------------------------------------------------------------------------
+# Fonctions Bluesky
+# ---------------------------------------------------------------------------
 
 resource "scaleway_function" "post_agenda_bluesky" {
   name         = "post-agenda-bluesky"
@@ -166,13 +235,16 @@ resource "scaleway_function" "post_agenda_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_agenda.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_agenda", "")
   deploy       = true
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url
     BSKY_IDENTIFIER   = var.bsky_identifier
     BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_post_agenda]
   }
 }
 
@@ -192,13 +264,16 @@ resource "scaleway_function" "post_commissions_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_commissions.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_commissions", "")
   deploy       = true
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url
     BSKY_IDENTIFIER   = var.bsky_identifier
     BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_post_commissions]
   }
 }
 
@@ -218,7 +293,6 @@ resource "scaleway_function" "ingest_datan" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/datan.zip"
-  zip_hash     = lookup(var.zip_hashes, "datan", "")
   deploy       = true
 
   environment_variables = {
@@ -227,6 +301,10 @@ resource "scaleway_function" "ingest_datan" {
 
   secret_environment_variables = {
     DATABASE_URL = var.database_url
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_datan]
   }
 }
 
@@ -246,13 +324,16 @@ resource "scaleway_function" "post_scrutins_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_scrutins.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_scrutins", "")
   deploy       = true
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url
     BSKY_IDENTIFIER   = var.bsky_identifier
     BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_post_scrutins]
   }
 }
 
@@ -278,13 +359,16 @@ resource "scaleway_function" "post_stats_hebdo_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_stats_hebdo.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_stats_hebdo", "")
   deploy       = true
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url
     BSKY_IDENTIFIER   = var.bsky_identifier
     BSKY_APP_PASSWORD = var.bsky_app_password
+  }
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.zip_trigger_post_stats_hebdo]
   }
 }
 
