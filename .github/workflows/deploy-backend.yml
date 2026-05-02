@@ -150,8 +150,19 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Build ZIPs (requis par filesha256 dans module.functions)
+      - name: Build ZIPs (fonctions d'ingestion)
         run: bash backend/ingestion/build_functions.sh
+
+      - name: Compute ZIP hashes
+        working-directory: infra
+        run: |
+          HASHES="{"
+          for name in scrutins organes deputes agenda amendements post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
+            hash=$(sha256sum "functions/${name}.zip" | awk '{print $1}')
+            HASHES="${HASHES}\"${name}\":\"${hash}\","
+          done
+          HASHES="${HASHES%,}}"
+          echo "TF_VAR_zip_hashes=$HASHES" >> "$GITHUB_ENV"
 
       - uses: hashicorp/setup-terraform@v4
 
@@ -166,6 +177,7 @@ jobs:
           TF_VAR_api_image_tag: ${{ needs.build-push.outputs.image_tag }}
           TF_VAR_bsky_identifier: ${{ secrets.BSKY_IDENTIFIER }}
           TF_VAR_bsky_app_password: ${{ secrets.BSKY_APP_PASSWORD }}
+          TF_VAR_zip_hashes: ${{ env.TF_VAR_zip_hashes }}
         run: |
           terraform init -backend-config="access_key=${{ secrets.SCW_ACCESS_KEY }}" \
                          -backend-config="secret_key=${{ secrets.SCW_SECRET_KEY }}"
