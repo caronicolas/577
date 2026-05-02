@@ -13,6 +13,12 @@ resource "scaleway_function_namespace" "main" {
   region     = "fr-par"
 }
 
+# ---------------------------------------------------------------------------
+# Fonctions d'ingestion
+# BUILD_HASH dans environment_variables déclenche une mise à jour in-place
+# (re-upload du ZIP) quand le contenu du ZIP change, sans détruire la fonction.
+# ---------------------------------------------------------------------------
+
 resource "scaleway_function" "ingest_scrutins" {
   name         = "ingest-scrutins"
   namespace_id = scaleway_function_namespace.main.id
@@ -23,11 +29,11 @@ resource "scaleway_function" "ingest_scrutins" {
   max_scale    = 1
   memory_limit = 1024
   zip_file     = "functions/scrutins.zip"
-  zip_hash     = lookup(var.zip_hashes, "scrutins", "")
   deploy       = true
 
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
+    BUILD_HASH             = lookup(var.zip_hashes, "scrutins", "")
   }
 
   secret_environment_variables = {
@@ -57,11 +63,11 @@ resource "scaleway_function" "ingest_organes" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/organes.zip"
-  zip_hash     = lookup(var.zip_hashes, "organes", "")
   deploy       = true
 
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
+    BUILD_HASH             = lookup(var.zip_hashes, "organes", "")
   }
 
   secret_environment_variables = {
@@ -85,12 +91,12 @@ resource "scaleway_function" "ingest_deputes" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/deputes.zip"
-  zip_hash     = lookup(var.zip_hashes, "deputes", "")
   deploy       = true
 
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
     GOUV_API_BASE_URL      = var.gouv_api_base_url
+    BUILD_HASH             = lookup(var.zip_hashes, "deputes", "")
   }
 
   secret_environment_variables = {
@@ -114,8 +120,11 @@ resource "scaleway_function" "ingest_agenda" {
   max_scale    = 1
   memory_limit = 512
   zip_file     = "functions/agenda.zip"
-  zip_hash     = lookup(var.zip_hashes, "agenda", "")
   deploy       = true
+
+  environment_variables = {
+    BUILD_HASH = lookup(var.zip_hashes, "agenda", "")
+  }
 
   secret_environment_variables = {
     DATABASE_URL = var.database_url
@@ -138,11 +147,11 @@ resource "scaleway_function" "ingest_amendements" {
   max_scale    = 1
   memory_limit = 1024
   zip_file     = "functions/amendements.zip"
-  zip_hash     = lookup(var.zip_hashes, "amendements", "")
   deploy       = true
 
   environment_variables = {
     ASSEMBLEE_API_BASE_URL = var.assemblee_api_base_url
+    BUILD_HASH             = lookup(var.zip_hashes, "amendements", "")
   }
 
   secret_environment_variables = {
@@ -156,6 +165,10 @@ resource "scaleway_function_cron" "amendements_daily" {
   args        = jsonencode({ type = "amendements" })
 }
 
+# ---------------------------------------------------------------------------
+# Fonctions Bluesky
+# ---------------------------------------------------------------------------
+
 resource "scaleway_function" "post_agenda_bluesky" {
   name         = "post-agenda-bluesky"
   namespace_id = scaleway_function_namespace.main.id
@@ -166,8 +179,11 @@ resource "scaleway_function" "post_agenda_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_agenda.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_agenda", "")
   deploy       = true
+
+  environment_variables = {
+    BUILD_HASH = lookup(var.zip_hashes, "post_agenda", "")
+  }
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url
@@ -192,8 +208,11 @@ resource "scaleway_function" "post_commissions_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_commissions.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_commissions", "")
   deploy       = true
+
+  environment_variables = {
+    BUILD_HASH = lookup(var.zip_hashes, "post_commissions", "")
+  }
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url
@@ -218,11 +237,11 @@ resource "scaleway_function" "ingest_datan" {
   max_scale    = 1
   memory_limit = 256
   zip_file     = "functions/datan.zip"
-  zip_hash     = lookup(var.zip_hashes, "datan", "")
   deploy       = true
 
   environment_variables = {
     GOUV_API_BASE_URL = var.gouv_api_base_url
+    BUILD_HASH        = lookup(var.zip_hashes, "datan", "")
   }
 
   secret_environment_variables = {
@@ -246,8 +265,11 @@ resource "scaleway_function" "post_scrutins_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_scrutins.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_scrutins", "")
   deploy       = true
+
+  environment_variables = {
+    BUILD_HASH = lookup(var.zip_hashes, "post_scrutins", "")
+  }
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url
@@ -278,8 +300,11 @@ resource "scaleway_function" "post_stats_hebdo_bluesky" {
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_stats_hebdo.zip"
-  zip_hash     = lookup(var.zip_hashes, "post_stats_hebdo", "")
   deploy       = true
+
+  environment_variables = {
+    BUILD_HASH = lookup(var.zip_hashes, "post_stats_hebdo", "")
+  }
 
   secret_environment_variables = {
     DATABASE_URL      = var.database_url

@@ -51,20 +51,10 @@ module "functions" {
   bsky_identifier        = var.bsky_identifier
   bsky_app_password      = var.bsky_app_password
 
-  # Hashes calculés ici (module racine) pour éviter le bug du provider Scaleway
-  # où filesha256() re-évalué depuis le module enfant retourne "" avec -target
-  zip_hashes = {
-    scrutins         = try(filesha256("functions/scrutins.zip"), "")
-    organes          = try(filesha256("functions/organes.zip"), "")
-    deputes          = try(filesha256("functions/deputes.zip"), "")
-    agenda           = try(filesha256("functions/agenda.zip"), "")
-    amendements      = try(filesha256("functions/amendements.zip"), "")
-    post_agenda      = try(filesha256("functions/post_agenda.zip"), "")
-    post_commissions = try(filesha256("functions/post_commissions.zip"), "")
-    datan            = try(filesha256("functions/datan.zip"), "")
-    post_scrutins    = try(filesha256("functions/post_scrutins.zip"), "")
-    post_stats_hebdo = try(filesha256("functions/post_stats_hebdo.zip"), "")
-  }
+  # Hashes calculés dans la CI (sha256sum) et passés via TF_VAR_zip_hashes.
+  # Utiliser filesha256() en HCL provoque une re-évaluation à "" pendant
+  # le plan expansion de terraform apply -target, causant "inconsistent final plan".
+  zip_hashes = var.zip_hashes
 }
 
 module "frontend" {

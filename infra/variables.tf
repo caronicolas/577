@@ -64,3 +64,9 @@ variable "bsky_app_password" {
   sensitive   = true
   default     = ""
 }
+
+variable "zip_hashes" {
+  description = "SHA-256 des ZIPs de fonctions, calculés dans la CI et passés via TF_VAR_zip_hashes"
+  type        = map(string)
+  default     = {}
+}
