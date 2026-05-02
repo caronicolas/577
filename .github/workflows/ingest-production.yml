@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       scripts:
-        description: "Scripts à exécuter (organes deputes datan agenda)"
+        description: "Scripts à exécuter (organes deputes datan agenda scrutins)"
         required: false
         default: "organes deputes"
 
@@ -64,3 +64,8 @@ jobs:
         if: contains(github.event.inputs.scripts, 'agenda')
         working-directory: backend
         run: python -m ingestion.assemblee.agenda
+
+      - name: scrutins.py
+        if: contains(github.event.inputs.scripts, 'scrutins')
+        working-directory: backend
+        run: python -m ingestion.assemblee.scrutins

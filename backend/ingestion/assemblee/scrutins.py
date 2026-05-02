@@ -470,3 +470,7 @@ def handle(event: dict, context: object) -> dict:
     """Point d'entrée Scaleway Serverless Functions."""
     logging.basicConfig(level=logging.INFO)
     return asyncio.run(_main())
+
+
+if __name__ == "__main__":
+    asyncio.run(_main())
