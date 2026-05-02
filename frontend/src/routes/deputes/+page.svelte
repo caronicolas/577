@@ -112,11 +112,24 @@
         <option value={d.code}>{d.code} — {d.nom}</option>
       {/each}
     </select>
-    {#if hasFilters}
-      <button class="reset-btn" onclick={resetFilters}>✕ Réinitialiser</button>
-    {/if}
   </div>
 </div>
+
+{#if hasFilters}
+  <div class="active-filters">
+    {#if search}
+      <span class="tag">"{search}" <button class="tag-remove" onclick={() => (search = '')} aria-label="Retirer la recherche">×</button></span>
+    {/if}
+    {#if selectedGroupe}
+      <span class="tag">{selectedGroupe} <button class="tag-remove" onclick={() => (selectedGroupe = '')} aria-label="Retirer le filtre groupe">×</button></span>
+    {/if}
+    {#if selectedDept}
+      {@const dept = departements.find((d) => d.code === selectedDept)}
+      <span class="tag">{selectedDept}{dept ? ` — ${dept.nom}` : ''} <button class="tag-remove" onclick={() => (selectedDept = '')} aria-label="Retirer le filtre département">×</button></span>
+    {/if}
+    <button class="reset-btn" onclick={resetFilters}>Tout effacer</button>
+  </div>
+{/if}
 
 {#if loading}
   <p class="muted">Chargement…</p>
@@ -166,11 +179,11 @@
 <style>
   .header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
   }
 
   h1 { font-size: 1.75rem; font-weight: 700; }
@@ -207,20 +220,59 @@
 
   .select--sm { min-width: 140px; }
 
-  .reset-btn {
-    padding: 0.4rem 0.75rem;
+  .active-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem 0.2rem 0.65rem;
+    background: var(--color-border);
+    border-radius: 999px;
     font-size: 0.8rem;
+    color: var(--color-text);
+  }
+
+  .tag-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
-    border: 1px solid var(--color-border);
+    border: none;
+    padding: 0;
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.85rem;
+    line-height: 1;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: 50%;
+  }
+
+  .tag-remove:hover {
+    background: rgba(0, 0, 0, 0.12);
+    color: var(--color-text);
+  }
+
+  .reset-btn {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.78rem;
+    background: none;
+    border: none;
     border-radius: var(--radius-sm);
     color: var(--color-text-muted);
     cursor: pointer;
-    height: 2.1rem;
+    text-decoration: underline;
     white-space: nowrap;
   }
 
   .reset-btn:hover {
-    background: var(--color-border);
     color: var(--color-text);
   }
 
