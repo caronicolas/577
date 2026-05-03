@@ -104,7 +104,7 @@
   .position[data-pos="pour"] { color: #38a169; }
   .position[data-pos="contre"] { color: #e53e3e; }
   .position[data-pos="abstention"] { color: #718096; }
-  .position[data-pos="nonVotant"] { color: #2d3748; }
+  .position[data-pos="nonVotant"] { color: #718096; }
   .position[data-pos="absent"] { color: #1a202c; }
 
   .groupe-libelle {

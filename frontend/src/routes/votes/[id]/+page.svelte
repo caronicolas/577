@@ -66,6 +66,7 @@
   const totalContre = $derived(groupeStats.reduce((s, g) => s + g.contre, 0));
   const totalAbstention = $derived(groupeStats.reduce((s, g) => s + g.abstention, 0));
   const maxVotes = $derived(Math.max(totalPour, totalContre, totalAbstention, 1));
+  const totalAbsents = $derived(scrutin?.votes?.filter((v: any) => v.position === 'absent').length ?? 0);
 
   const TYPE_VOTE_INFO: Record<string, string> = {
     'scrutin public solennel': 'Scrutin solennel — vote public et nominatif sur les textes les plus importants (budget, loi de finances, motion de confiance…). Chaque député·e vote individuellement et son vote est publié.',
@@ -149,13 +150,16 @@
     {#if scrutin.nombre_abstentions != null}
       <div class="stat"><span class="val">{scrutin.nombre_abstentions}</span><span class="lbl">abstentions</span></div>
     {/if}
+    {#if totalAbsents > 0}
+      <div class="stat absent"><span class="val">{totalAbsents}</span><span class="lbl">absents</span></div>
+    {/if}
   </div>
 
   <div class="color-legend">
     <span class="cl-item"><span class="cl-swatch" style="background:#38a169"></span>Pour</span>
     <span class="cl-item"><span class="cl-swatch" style="background:#e53e3e"></span>Contre</span>
     <span class="cl-item"><span class="cl-swatch" style="background:#a0aec0"></span>Abstention</span>
-    <span class="cl-item"><span class="cl-swatch" style="background:#2d3748"></span>Non-votant</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#718096"></span>Non-votant</span>
     <span class="cl-item"><span class="cl-swatch" style="background:#1a202c"></span>Absent</span>
   </div>
 
@@ -335,6 +339,7 @@
 
   .pour .val { color: var(--color-vote); }
   .contre .val { color: var(--color-absent); }
+  .absent .val { color: #1a202c; }
 
   .muted, .error { color: var(--color-text-muted); }
   .error { color: var(--color-absent); }
