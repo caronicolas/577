@@ -27,6 +27,7 @@
   let search = $state('');
   let selectedGroupe = $state('');
   let selectedDept = $state('');
+  let sortBy = $state<'nom' | 'groupe' | 'departement'>('nom');
   let deputes = $state<Depute[]>([]);
   let total = $state(0);
   let loading = $state(true);
@@ -46,6 +47,24 @@
   );
 
   const hasFilters = $derived(!!search || !!selectedGroupe || !!selectedDept);
+
+  const deputesTries = $derived.by(() => {
+    const list = [...deputes];
+    if (sortBy === 'groupe') {
+      list.sort((a, b) => {
+        const ga = a.groupe?.sigle ?? 'ZZZ';
+        const gb = b.groupe?.sigle ?? 'ZZZ';
+        return ga.localeCompare(gb) || a.nom.localeCompare(b.nom);
+      });
+    } else if (sortBy === 'departement') {
+      list.sort((a, b) => {
+        const da = a.num_departement ?? 'ZZZ';
+        const db = b.num_departement ?? 'ZZZ';
+        return da.localeCompare(db, undefined, { numeric: true }) || a.nom.localeCompare(b.nom);
+      });
+    }
+    return list;
+  });
 
   $effect(() => {
     const params = new URLSearchParams();
@@ -81,6 +100,7 @@
     search = '';
     selectedGroupe = '';
     selectedDept = '';
+    sortBy = 'nom';
   }
 </script>
 
@@ -111,6 +131,11 @@
       {#each departements as d (d.code)}
         <option value={d.code}>{d.code} — {d.nom}</option>
       {/each}
+    </select>
+    <select bind:value={sortBy} class="select select--sm">
+      <option value="nom">Tri : nom</option>
+      <option value="groupe">Tri : groupe</option>
+      <option value="departement">Tri : département</option>
     </select>
   </div>
 </div>
@@ -152,7 +177,7 @@
     </span>
   </p>
   <ul class="grid">
-    {#each deputes as d (d.id)}
+    {#each deputesTries as d (d.id)}
       <li>
         <a href="/deputes/{d.id}" class="card">
           {#if d.url_photo}
