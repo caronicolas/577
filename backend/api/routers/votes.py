@@ -40,11 +40,12 @@ class ScrutinListResponse(BaseModel):
 class VoteDeputeItem(BaseModel):
     depute_id: str
     nom: str
+    url_photo: Optional[str] = None
     groupe_id: Optional[str]
     groupe_sigle: Optional[str]
     groupe_couleur: Optional[str]
     place_hemicycle: Optional[int]
-    position: str  # pour / contre / abstention / nonVotant
+    position: str  # pour / contre / abstention / nonVotant / absent
 
 
 class ScrutinDetail(BaseModel):
@@ -217,12 +218,16 @@ async def get_scrutin(
         raise HTTPException(status_code=404, detail="Scrutin introuvable")
     scrutin, expose_sommaire = result
 
-    # Votes avec infos député et groupe en une seule requête (pas de N+1)
+    # Tous les députés actifs avec leur vote éventuel (LEFT JOIN) — les absents
+    # n'ont pas de ligne dans votes_deputes et reçoivent position='absent'
     votes_stmt = (
-        select(VoteDepute, Depute, Organe)
-        .join(Depute, VoteDepute.depute_id == Depute.id)
+        select(Depute, Organe, VoteDepute.position)
         .outerjoin(Organe, Depute.groupe_id == Organe.id)
-        .where(VoteDepute.scrutin_id == scrutin_id)
+        .outerjoin(
+            VoteDepute,
+            (VoteDepute.depute_id == Depute.id) & (VoteDepute.scrutin_id == scrutin_id),
+        )
+        .where(Depute.actif == True)  # noqa: E712
         .order_by(Depute.place_hemicycle)
     )
     votes_rows = (await session.execute(votes_stmt)).all()
@@ -245,14 +250,15 @@ async def get_scrutin(
         legislature=scrutin.legislature,
         votes=[
             VoteDeputeItem(
-                depute_id=vote.depute_id,
+                depute_id=depute.id,
                 nom=depute.nom,
+                url_photo=depute.url_photo,
                 groupe_id=organe.id if organe else None,
                 groupe_sigle=organe.sigle if organe else None,
                 groupe_couleur=organe.couleur if organe else None,
                 place_hemicycle=depute.place_hemicycle,
-                position=vote.position,
+                position=position if position is not None else "absent",
             )
-            for vote, depute, organe in votes_rows
+            for depute, organe, position in votes_rows
         ],
     )

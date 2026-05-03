@@ -46,6 +46,7 @@
     if (!scrutin?.votes) return [];
     const map = new Map<string, GroupeStats>();
     for (const v of scrutin.votes) {
+      if (v.position === 'absent') continue; // absents exclus des stats groupe
       const sigle = v.groupe_sigle ?? '?';
       const couleur = v.groupe_couleur ?? '#cbcbcb';
       if (!map.has(sigle)) {
@@ -148,6 +149,14 @@
     {#if scrutin.nombre_abstentions != null}
       <div class="stat"><span class="val">{scrutin.nombre_abstentions}</span><span class="lbl">abstentions</span></div>
     {/if}
+  </div>
+
+  <div class="color-legend">
+    <span class="cl-item"><span class="cl-swatch" style="background:#38a169"></span>Pour</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#e53e3e"></span>Contre</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#a0aec0"></span>Abstention</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#2d3748"></span>Non-votant</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#1a202c"></span>Absent</span>
   </div>
 
   <div class="legend">
@@ -344,6 +353,30 @@
     flex-direction: column;
     gap: 0.1rem;
     white-space: nowrap;
+  }
+
+  /* Légende couleurs vote */
+  .color-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .cl-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .cl-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
   }
 
   /* Légende groupes */

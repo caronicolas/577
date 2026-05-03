@@ -23,6 +23,7 @@
     contre: '#e53e3e',
     abstention: '#a0aec0',
     nonVotant: '#2d3748',
+    absent: '#1a202c',
   };
 
   const DIMMED_COLOR = '#e2e8f0';
