@@ -1,6 +1,8 @@
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import type { RequestHandler } from '@sveltejs/kit';
 
+export const prerender = true;
+
 const DOMAIN = 'https://les577.fr';
 
 const STATIC_PAGES = [
