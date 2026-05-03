@@ -36,6 +36,13 @@
       .sort((a: any, b: any) => b.date.localeCompare(a.date))
   );
 
+  const POSITION_LABEL: Record<string, string> = {
+    pour: 'Pour',
+    contre: 'Contre',
+    abstention: 'Abstention',
+    nonVotant: 'Non votant',
+  };
+
   let expandedCommissions = $state(new Set<string>());
 
   function toggleCommission(id: string) {
@@ -242,8 +249,20 @@
       {:else}
         <ul class="list">
           {#each votes as v (v.id)}
+            {@const pos = (v.position ?? '').toLowerCase()}
             <li class="list-item" data-pos={v.position ?? ''}>
               <a href="/votes/{v.scrutin_id ?? v.id}" class="vote-link">
+                <div class="vote-meta">
+                  {#if v.position}
+                    <span class="position position--{pos}">{POSITION_LABEL[v.position] ?? v.position}</span>
+                  {/if}
+                  {#if v.date_seance}
+                    <span class="vote-date">{v.date_seance}</span>
+                  {/if}
+                  {#if v.sort}
+                    <span class="vote-sort" data-sort={v.sort}>{v.sort}</span>
+                  {/if}
+                </div>
                 <span class="vote-titre">{v.titre ?? v.objet ?? 'Scrutin sans titre'}</span>
               </a>
             </li>
@@ -490,8 +509,8 @@
 
   .vote-link {
     display: flex;
-    gap: 0.5rem;
-    align-items: baseline;
+    flex-direction: column;
+    gap: 0.25rem;
     font-size: 0.875rem;
     color: var(--color-text);
     width: 100%;
@@ -501,8 +520,40 @@
 
   .vote-link:hover { text-decoration: none; }
 
+  .vote-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
 
-  .vote-titre { flex: 1; }
+  .position {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .position--pour       { background: #c6f6d5; color: #276749; }
+  .position--contre     { background: #fed7d7; color: #9b2c2c; }
+  .position--abstention { background: #e2e8f0; color: #4a5568; }
+  .position--nonvotant  { background: #e2e8f0; color: #718096; }
+
+  .vote-date {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .vote-sort {
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
+
+  .vote-sort[data-sort="Adopté"]  { color: var(--color-vote); }
+  .vote-sort[data-sort="Rejeté"]  { color: var(--color-absent); }
+
+  .vote-titre { line-height: 1.4; }
 
   .muted { color: var(--color-text-muted); }
 

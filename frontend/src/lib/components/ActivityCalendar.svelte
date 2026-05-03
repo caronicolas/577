@@ -44,6 +44,7 @@
   const GAP = 2;
   const STEP = CELL + GAP;
   const WEEKS_LABEL_W = 24;
+  const MONTH_LABEL_H = 14;
 
   /** Construit un map date ISO → activité */
   const activiteByDate = $derived(
@@ -97,8 +98,22 @@
     return parts.join(' ');
   }
 
+  const monthLabels = $derived.by(() => {
+    const labels: { wi: number; label: string }[] = [];
+    let lastMonth = -1;
+    for (let wi = 0; wi < weeks.length; wi++) {
+      const d = new Date(weeks[wi][0] + 'T12:00:00');
+      const m = d.getMonth();
+      if (m !== lastMonth) {
+        labels.push({ wi, label: d.toLocaleString('fr-FR', { month: 'short' }) });
+        lastMonth = m;
+      }
+    }
+    return labels;
+  });
+
   const svgWidth = $derived(WEEKS_LABEL_W + weeks.length * STEP);
-  const svgHeight = $derived(7 * STEP);
+  const svgHeight = $derived(MONTH_LABEL_H + 7 * STEP);
 
   const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -189,15 +204,25 @@
 <div class="calendar" bind:this={calendarEl}>
   <svg
     width={svgWidth}
-    height={svgHeight + STEP}
+    height={svgHeight}
     role="img"
     aria-label="Calendrier d'activité"
   >
+    <!-- Labels mois -->
+    {#each monthLabels as { wi, label }}
+      <text
+        x={WEEKS_LABEL_W + wi * STEP}
+        y={MONTH_LABEL_H - 3}
+        font-size="8"
+        fill="var(--color-text-muted)"
+      >{label}</text>
+    {/each}
+
     <!-- Labels jours -->
     {#each DAY_LABELS as label, i}
       <text
         x={WEEKS_LABEL_W - 4}
-        y={i * STEP + CELL * 0.85}
+        y={MONTH_LABEL_H + i * STEP + CELL * 0.85}
         text-anchor="end"
         font-size="8"
         fill="var(--color-text-muted)"
@@ -209,7 +234,7 @@
       {#each week as date, di}
         <rect
           x={WEEKS_LABEL_W + wi * STEP}
-          y={di * STEP}
+          y={MONTH_LABEL_H + di * STEP}
           width={CELL}
           height={CELL}
           rx="2"
