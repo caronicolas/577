@@ -46,6 +46,7 @@
     if (!scrutin?.votes) return [];
     const map = new Map<string, GroupeStats>();
     for (const v of scrutin.votes) {
+      if (v.position === 'absent') continue; // absents exclus des stats groupe
       const sigle = v.groupe_sigle ?? '?';
       const couleur = v.groupe_couleur ?? '#cbcbcb';
       if (!map.has(sigle)) {
@@ -65,6 +66,7 @@
   const totalContre = $derived(groupeStats.reduce((s, g) => s + g.contre, 0));
   const totalAbstention = $derived(groupeStats.reduce((s, g) => s + g.abstention, 0));
   const maxVotes = $derived(Math.max(totalPour, totalContre, totalAbstention, 1));
+  const totalAbsents = $derived(scrutin?.votes?.filter((v: any) => v.position === 'absent').length ?? 0);
 
   const TYPE_VOTE_INFO: Record<string, string> = {
     'scrutin public solennel': 'Scrutin solennel — vote public et nominatif sur les textes les plus importants (budget, loi de finances, motion de confiance…). Chaque député·e vote individuellement et son vote est publié.',
@@ -148,6 +150,17 @@
     {#if scrutin.nombre_abstentions != null}
       <div class="stat"><span class="val">{scrutin.nombre_abstentions}</span><span class="lbl">abstentions</span></div>
     {/if}
+    {#if totalAbsents > 0}
+      <div class="stat absent"><span class="val">{totalAbsents}</span><span class="lbl">absents</span></div>
+    {/if}
+  </div>
+
+  <div class="color-legend">
+    <span class="cl-item"><span class="cl-swatch" style="background:#38a169"></span>Pour</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#e53e3e"></span>Contre</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#a0aec0"></span>Abstention</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#718096"></span>Non-votant</span>
+    <span class="cl-item"><span class="cl-swatch" style="background:#1a202c"></span>Absent</span>
   </div>
 
   <div class="legend">
@@ -326,6 +339,7 @@
 
   .pour .val { color: var(--color-vote); }
   .contre .val { color: var(--color-absent); }
+  .absent .val { color: #1a202c; }
 
   .muted, .error { color: var(--color-text-muted); }
   .error { color: var(--color-absent); }
@@ -344,6 +358,30 @@
     flex-direction: column;
     gap: 0.1rem;
     white-space: nowrap;
+  }
+
+  /* Légende couleurs vote */
+  .color-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .cl-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .cl-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
   }
 
   /* Légende groupes */

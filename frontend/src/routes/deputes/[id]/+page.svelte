@@ -116,13 +116,13 @@
         <span class="badge-inactif">Mandat terminé</span>
       {/if}
       {#if depute.groupe}
-        <div class="groupe">
+        <a href="/groupes/{depute.groupe.id}" class="groupe">
           <span
             class="badge"
             style="background: {depute.groupe.couleur ?? 'var(--color-border)'}"
           >{depute.groupe.sigle}</span>
           <span class="groupe-libelle">{depute.groupe.libelle}</span>
-        </div>
+        </a>
       {/if}
       <p class="circ">{depute.nom_circonscription ?? ''}{depute.num_departement ? ` (${depute.num_departement})` : ''}</p>
       {#if depute.date_naissance || depute.profession}
@@ -244,6 +244,16 @@
 
     <section class="col">
       <h2>Votes ({votes.length})</h2>
+      {#if votes.length > 0}
+        {@const nbPour = votes.filter((v) => v.position === 'pour').length}
+        {@const nbContre = votes.filter((v) => v.position === 'contre').length}
+        {@const nbAbst = votes.filter((v) => v.position === 'abstention').length}
+        <div class="vote-stats">
+          <span class="stat stat--pour">{nbPour} pour</span>
+          <span class="stat stat--contre">{nbContre} contre</span>
+          <span class="stat stat--abst">{nbAbst} abst.</span>
+        </div>
+      {/if}
       {#if votes.length === 0}
         <p class="muted">Aucun vote enregistré.</p>
       {:else}
@@ -354,6 +364,11 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    width: fit-content;
+  }
+
+  .groupe:hover .groupe-libelle {
+    text-decoration: underline;
   }
 
   .groupe-libelle {
@@ -506,6 +521,24 @@
   .amend-sort { font-size: 0.75rem; font-weight: 600; flex-shrink: 0; margin-left: 0.25rem; color: var(--color-text-muted); }
   .amend-sort[data-sort="Adopté"] { color: var(--color-vote); }
   .amend-sort[data-sort="Rejeté"] { color: var(--color-absent); }
+
+  .vote-stats {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  .stat--pour   { background: #c6f6d5; color: #276749; }
+  .stat--contre { background: #fed7d7; color: #9b2c2c; }
+  .stat--abst   { background: #e2e8f0; color: #4a5568; }
 
   .vote-link {
     display: flex;
