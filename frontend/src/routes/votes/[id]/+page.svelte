@@ -323,8 +323,9 @@
 
   .stats {
     display: flex;
+    justify-content: center;
     gap: 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 0.75rem;
   }
 
   .stat {
@@ -363,11 +364,12 @@
   /* Légende couleurs vote */
   .color-legend {
     display: flex;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 0.5rem 1rem;
     font-size: 0.78rem;
     color: var(--color-text-muted);
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
   }
 
   .cl-item {
@@ -426,7 +428,7 @@
   /* Graphique barres */
   .chart {
     max-width: 900px;
-    margin: 1.5rem auto 0;
+    margin: 0.75rem auto 0;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
