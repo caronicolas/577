@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       scripts:
-        description: "Scripts à exécuter (organes deputes datan agenda scrutins)"
+        description: "Scripts à exécuter (organes deputes datan agenda scrutins post_agenda post_commissions)"
         required: false
         default: "organes deputes"
 
@@ -69,3 +69,19 @@ jobs:
         if: contains(github.event.inputs.scripts, 'scrutins')
         working-directory: backend
         run: python -m ingestion.assemblee.scrutins
+
+      - name: post_agenda.py
+        if: contains(github.event.inputs.scripts, 'post_agenda')
+        working-directory: backend
+        env:
+          BSKY_IDENTIFIER: ${{ secrets.BSKY_IDENTIFIER }}
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+        run: python -m ingestion.bluesky.post_agenda
+
+      - name: post_commissions.py
+        if: contains(github.event.inputs.scripts, 'post_commissions')
+        working-directory: backend
+        env:
+          BSKY_IDENTIFIER: ${{ secrets.BSKY_IDENTIFIER }}
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+        run: python -m ingestion.bluesky.post_commissions

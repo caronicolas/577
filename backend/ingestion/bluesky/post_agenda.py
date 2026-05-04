@@ -201,8 +201,8 @@ async def _create_record(
 
 
 async def _main() -> dict:
-    today = date.today()
-    logger.info("Vérification agenda du %s", today)
+    today = datetime.now(timezone.utc).date()
+    logger.info("Vérification agenda du %s (UTC)", today)
 
     titres = await _get_seances_du_jour(today)
     if not titres:
