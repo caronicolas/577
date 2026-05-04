@@ -18,18 +18,25 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "prises_de_parole",
-        sa.Column(
-            "depute_id", sa.String(50), sa.ForeignKey("deputes.id"), nullable=False
-        ),
-        sa.Column("seance_id", sa.String(100), nullable=False),
-        sa.Column("date", sa.Date(), nullable=False),
-        sa.Column("legislature", sa.Integer(), nullable=False, server_default="17"),
-        sa.PrimaryKeyConstraint("depute_id", "seance_id"),
+    conn = op.get_bind()
+    if not sa.inspect(conn).has_table("prises_de_parole"):
+        op.create_table(
+            "prises_de_parole",
+            sa.Column(
+                "depute_id", sa.String(50), sa.ForeignKey("deputes.id"), nullable=False
+            ),
+            sa.Column("seance_id", sa.String(100), nullable=False),
+            sa.Column("date", sa.Date(), nullable=False),
+            sa.Column("legislature", sa.Integer(), nullable=False, server_default="17"),
+            sa.PrimaryKeyConstraint("depute_id", "seance_id"),
+        )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_prises_de_parole_depute_id "
+        "ON prises_de_parole (depute_id)"
     )
-    op.create_index("ix_prises_de_parole_depute_id", "prises_de_parole", ["depute_id"])
-    op.create_index("ix_prises_de_parole_date", "prises_de_parole", ["date"])
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_prises_de_parole_date ON prises_de_parole (date)"
+    )
 
 
 def downgrade() -> None:
