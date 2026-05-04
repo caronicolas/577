@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, closed]
+    paths-ignore:
+      - 'infra/**'
+      - '.github/workflows/deploy-infra.yml'
   workflow_dispatch:
 
 env:
