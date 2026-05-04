@@ -9,10 +9,12 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
   let selectedGroupe = $state<string | null>(null);
+  let selectedPosition = $state<string | null>(null);
 
   $effect(() => {
     loading = true;
     selectedGroupe = null;
+    selectedPosition = null;
     fetch(`${apiBase}/votes/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Scrutin introuvable');
@@ -29,7 +31,13 @@
   });
 
   function toggleGroupe(sigle: string) {
+    selectedPosition = null;
     selectedGroupe = selectedGroupe === sigle ? null : sigle;
+  }
+
+  function togglePosition(pos: string) {
+    selectedGroupe = null;
+    selectedPosition = selectedPosition === pos ? null : pos;
   }
 
   interface GroupeStats {
@@ -156,11 +164,23 @@
   </div>
 
   <div class="color-legend">
-    <span class="cl-item"><span class="cl-swatch" style="background:#38a169"></span>Pour</span>
-    <span class="cl-item"><span class="cl-swatch" style="background:#e53e3e"></span>Contre</span>
-    <span class="cl-item"><span class="cl-swatch" style="background:#a0aec0"></span>Abstention</span>
-    <span class="cl-item"><span class="cl-swatch" style="background:#718096"></span>Non-votant</span>
-    <span class="cl-item"><span class="cl-swatch" style="background:#1a202c"></span>Absent</span>
+    {#each [
+      { pos: 'pour',        label: 'Pour',       color: '#38a169' },
+      { pos: 'contre',      label: 'Contre',     color: '#e53e3e' },
+      { pos: 'abstention',  label: 'Abstention', color: '#a0aec0' },
+      { pos: 'nonVotant',   label: 'Non-votant', color: '#718096' },
+      { pos: 'absent',      label: 'Absent',     color: '#1a202c' },
+    ] as item}
+      <button
+        class="cl-item"
+        class:cl-active={selectedPosition === item.pos}
+        class:cl-dimmed={selectedPosition !== null && selectedPosition !== item.pos}
+        onclick={() => togglePosition(item.pos)}
+        title={selectedPosition === item.pos ? 'Réinitialiser' : `Filtrer : ${item.label}`}
+      >
+        <span class="cl-swatch" style="background:{item.color}"></span>{item.label}
+      </button>
+    {/each}
   </div>
 
   <div class="legend">
@@ -179,7 +199,7 @@
     {/each}
   </div>
 
-  <Hemicycle mode="vote" data={scrutin.votes} {selectedGroupe} />
+  <Hemicycle mode="vote" data={scrutin.votes} {selectedGroupe} {selectedPosition} />
 
   <div class="chart">
     {#each [
@@ -200,8 +220,12 @@
                 onmouseenter={(e) => showBarTooltip(e, g, row.label, g[row.position])}
                 onmousemove={moveBarTooltip}
                 onmouseleave={hideBarTooltip}
-                role="img"
+                onclick={() => toggleGroupe(g.sigle)}
+                onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleGroupe(g.sigle)}
+                role="button"
+                tabindex="0"
                 aria-label="{g.sigle} : {g[row.position]} {row.label.toLowerCase()}"
+                aria-pressed={selectedGroupe === g.sigle}
               ></div>
             {/each}
           </div>
@@ -376,7 +400,19 @@
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    transition: background 0.12s, opacity 0.12s, border-color 0.12s;
   }
+
+  .cl-item:hover { background: var(--color-border); }
+  .cl-item.cl-active { border-color: var(--color-border); background: var(--color-surface); color: var(--color-text); }
+  .cl-item.cl-dimmed { opacity: 0.35; }
 
   .cl-swatch {
     display: inline-block;
@@ -463,8 +499,10 @@
     height: 100%;
     transition: opacity 0.15s;
     flex-shrink: 0;
+    cursor: pointer;
   }
 
+  .bar-seg:hover { opacity: 0.75; }
   .bar-seg.dimmed { opacity: 0.2; }
 
   .chart-count {

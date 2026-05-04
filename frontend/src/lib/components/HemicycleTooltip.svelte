@@ -38,6 +38,12 @@
         >{depute.groupe.sigle}</span>
         <span class="groupe-libelle">{depute.groupe.libelle}</span>
       {/if}
+      {#if mode === 'vote' && depute.groupe_sigle}
+        <span
+          class="badge"
+          style="background: {depute.groupe_couleur ?? 'var(--color-border)'}"
+        >{depute.groupe_sigle}</span>
+      {/if}
       {#if mode === 'vote' && depute.position}
         <span class="position" data-pos={depute.position}>
           {POSITION_LABEL[depute.position] ?? depute.position}
