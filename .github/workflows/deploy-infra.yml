@@ -33,7 +33,7 @@ jobs:
       - name: Compute ZIP hashes
         run: |
           HASHES="{"
-          for name in scrutins organes deputes agenda amendements post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
+          for name in scrutins organes deputes agenda amendements prises_de_parole post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
             hash=$(sha256sum "infra/functions/${name}.zip" | awk '{print $1}')
             HASHES="${HASHES}\"${name}\":\"${hash}\","
           done
@@ -98,7 +98,7 @@ jobs:
       - name: Compute ZIP hashes
         run: |
           HASHES="{"
-          for name in scrutins organes deputes agenda amendements post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
+          for name in scrutins organes deputes agenda amendements prises_de_parole post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
             hash=$(sha256sum "infra/functions/${name}.zip" | awk '{print $1}')
             HASHES="${HASHES}\"${name}\":\"${hash}\","
           done
