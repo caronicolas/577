@@ -204,7 +204,7 @@ resource "scaleway_function" "post_commissions_bluesky" {
   runtime      = "python312"
   handler      = "post_commissions.handle"
   privacy      = "private"
-  timeout      = 60
+  timeout      = 300
   max_scale    = 1
   memory_limit = 128
   zip_file     = "functions/post_commissions.zip"
@@ -223,7 +223,7 @@ resource "scaleway_function" "post_commissions_bluesky" {
 
 resource "scaleway_function_cron" "post_commissions_bluesky_quarter" {
   function_id = scaleway_function.post_commissions_bluesky.id
-  schedule    = "*/15 7-17 * * 1-5" # Toutes les 15 min, 7h-17h UTC (9h-19h Paris), lun-ven
+  schedule    = "*/15 8-22 * * *" # Toutes les 15 min, 8h-22h UTC (10h-00h Paris), tous les jours
   args        = jsonencode({})
 }
 
