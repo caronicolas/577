@@ -18,6 +18,11 @@
   const SVG_H = seatsData.svg_height;
   const SEAT_SIZE = 7;
 
+  // Centre les sièges horizontalement dans le viewBox
+  const seatsXs = seatsData.seats.map((s) => s.x);
+  const seatsCenter = (Math.min(...seatsXs) + Math.max(...seatsXs)) / 2;
+  const viewBoxX = Math.round(seatsCenter - SVG_W / 2);
+
   const VOTE_COLORS: Record<string, string> = {
     pour: '#38a169',
     contre: '#e53e3e',
@@ -111,7 +116,7 @@
 
 <div class="hemicycle-wrapper">
   <svg
-    viewBox="0 0 {SVG_W} {SVG_H}"
+    viewBox="{viewBoxX} 0 {SVG_W} {SVG_H}"
     xmlns="http://www.w3.org/2000/svg"
     aria-label="Hémicycle de l'Assemblée Nationale — {data.length} députés"
     role="img"
