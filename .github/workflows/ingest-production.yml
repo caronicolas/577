@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       scripts:
-        description: "Scripts à exécuter (organes deputes datan agenda scrutins post_agenda post_commissions)"
+        description: "Scripts à exécuter (organes deputes datan agenda scrutins post_agenda post_commissions post_scrutins)"
         required: false
         default: "organes deputes"
 
@@ -85,3 +85,11 @@ jobs:
           BSKY_IDENTIFIER: ${{ secrets.BSKY_IDENTIFIER }}
           BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
         run: python -m ingestion.bluesky.post_commissions
+
+      - name: post_scrutins.py
+        if: contains(github.event.inputs.scripts, 'post_scrutins')
+        working-directory: backend
+        env:
+          BSKY_IDENTIFIER: ${{ secrets.BSKY_IDENTIFIER }}
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+        run: python -m ingestion.bluesky.post_scrutins
