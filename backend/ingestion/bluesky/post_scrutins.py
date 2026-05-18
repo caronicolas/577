@@ -78,8 +78,8 @@ async def _get_scrutins_a_poster() -> list[dict]:
             LEFT JOIN amendements a ON a.id = s.ref_amendement
             LEFT JOIN deputes d ON d.id = a.depute_id
             WHERE s.bluesky_posted_at IS NULL
-              AND s.type_vote = ANY(%s)
-              AND s.date_seance >= CURRENT_DATE - INTERVAL '3 days'
+              AND LOWER(COALESCE(s.type_vote, '')) = ANY(%s)
+              AND s.date_seance >= CURRENT_DATE - INTERVAL '7 days'
             ORDER BY s.date_seance DESC, s.id DESC
             LIMIT 3
             """,

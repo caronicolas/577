@@ -26,6 +26,17 @@ jobs:
       # -- Terraform apply module functions -----------------------------------
       - uses: hashicorp/setup-terraform@v4
 
+      - name: Compute ZIP hashes
+        working-directory: infra
+        run: |
+          HASHES="{"
+          for name in scrutins organes deputes agenda amendements post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
+            hash=$(sha256sum "functions/${name}.zip" | awk '{print $1}')
+            HASHES="${HASHES}\"${name}\":\"${hash}\","
+          done
+          HASHES="${HASHES%,}}"
+          echo "TF_VAR_zip_hashes=$HASHES" >> "$GITHUB_ENV"
+
       - name: Terraform Init
         working-directory: infra
         run: |
@@ -43,4 +54,5 @@ jobs:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
           TF_VAR_bsky_identifier: ${{ secrets.BSKY_IDENTIFIER }}
           TF_VAR_bsky_app_password: ${{ secrets.BSKY_APP_PASSWORD }}
+          TF_VAR_zip_hashes: ${{ env.TF_VAR_zip_hashes }}
         run: terraform apply -auto-approve -target=module.functions

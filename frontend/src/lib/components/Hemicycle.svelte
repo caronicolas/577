@@ -10,9 +10,10 @@
     /** mode=groupe : tableau de DeputeListItem  |  mode=vote : tableau de VoteDeputeItem */
     data: any[];
     selectedGroupe?: string | null;
+    selectedPosition?: string | null;
   }
 
-  const { mode, data, selectedGroupe = null }: Props = $props();
+  const { mode, data, selectedGroupe = null, selectedPosition = null }: Props = $props();
 
   const SVG_W = seatsData.svg_width;
   const SVG_H = seatsData.svg_height;
@@ -46,7 +47,9 @@
     } else {
       for (const v of data) {
         if (v.place_hemicycle != null) {
-          const isFiltered = selectedGroupe !== null && v.groupe_sigle !== selectedGroupe;
+          const isFiltered =
+            (selectedGroupe !== null && v.groupe_sigle !== selectedGroupe) ||
+            (selectedPosition !== null && v.position !== selectedPosition);
           map.set(v.place_hemicycle, isFiltered ? DIMMED_COLOR : (VOTE_COLORS[v.position] ?? '#cbcbcb'));
         }
       }
