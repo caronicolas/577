@@ -165,6 +165,33 @@ resource "scaleway_function_cron" "amendements_daily" {
   args        = jsonencode({ type = "amendements" })
 }
 
+resource "scaleway_function" "ingest_prises_de_parole" {
+  name         = "ingest-prises-de-parole"
+  namespace_id = scaleway_function_namespace.main.id
+  runtime      = "python312"
+  handler      = "prises_de_parole.handle"
+  privacy      = "private"
+  timeout      = 900
+  max_scale    = 1
+  memory_limit = 1024
+  zip_file     = "functions/prises_de_parole.zip"
+  deploy       = true
+
+  environment_variables = {
+    BUILD_HASH = lookup(var.zip_hashes, "prises_de_parole", "")
+  }
+
+  secret_environment_variables = {
+    DATABASE_URL = var.database_url
+  }
+}
+
+resource "scaleway_function_cron" "prises_de_parole_daily" {
+  function_id = scaleway_function.ingest_prises_de_parole.id
+  schedule    = "0 5 * * *" # 05:00 UTC chaque jour
+  args        = jsonencode({ type = "prises_de_parole" })
+}
+
 # ---------------------------------------------------------------------------
 # Fonctions Bluesky
 # ---------------------------------------------------------------------------

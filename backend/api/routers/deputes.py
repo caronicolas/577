@@ -13,6 +13,7 @@ from db.models import (
     DatanDepute,
     Depute,
     PresenceCommission,
+    PriseDeParole,
     ReunionCommission,
     Scrutin,
     VoteDepute,
@@ -367,6 +368,14 @@ async def get_activites(
     )
     amend_rows = (await session.execute(amend_stmt)).all()
 
+    # -- Prises de parole --------------------------------------------------------
+    parole_stmt = select(PriseDeParole.seance_id, PriseDeParole.date).where(
+        PriseDeParole.depute_id == depute_id,
+        PriseDeParole.date >= leg_debut,
+        PriseDeParole.date <= today,
+    )
+    parole_rows = (await session.execute(parole_stmt)).all()
+
     # -- Commissions : réunions auxquelles le député a participé -----------------
     commissions_stmt = (
         select(
@@ -396,6 +405,7 @@ async def get_activites(
         lambda: {
             "present": False,
             "a_vote": False,
+            "a_pris_parole": False,
             "a_depose_amendement": False,
             "a_commission": False,
             "votes": [],
@@ -419,6 +429,10 @@ async def get_activites(
         data[d]["amendements"].append(
             AmendementJour(id=amend_id, numero=numero, titre=titre, url_an=url_an)
         )
+
+    for _seance_id, d in parole_rows:
+        data[d]["a_pris_parole"] = True
+        data[d]["present"] = True
 
     for reunion_id, d, titre, heure_debut, organe_libelle, organe_id in commission_rows:
         data[d]["a_commission"] = True
@@ -451,6 +465,7 @@ async def get_activites(
             data[seance_date] = {
                 "present": False,
                 "a_vote": False,
+                "a_pris_parole": False,
                 "a_depose_amendement": False,
                 "a_commission": False,
                 "votes": [],
@@ -464,7 +479,7 @@ async def get_activites(
             date=d,
             present=v["present"],
             a_vote=v["a_vote"],
-            a_pris_parole=False,  # pas encore en base
+            a_pris_parole=v["a_pris_parole"],
             a_depose_amendement=v["a_depose_amendement"],
             a_commission=v["a_commission"],
             votes=v["votes"],

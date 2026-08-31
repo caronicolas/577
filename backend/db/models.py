@@ -73,6 +73,9 @@ class Depute(Base):
     presences_commission: Mapped[list["PresenceCommission"]] = relationship(
         back_populates="depute"
     )
+    prises_de_parole: Mapped[list["PriseDeParole"]] = relationship(
+        back_populates="depute"
+    )
 
 
 class Seance(Base):
@@ -226,6 +229,21 @@ class DatanGroupe(Base):
     score_rose: Mapped[Optional[float]] = mapped_column(Float)
     position_politique: Mapped[Optional[str]] = mapped_column(Text)
     date_maj: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
+class PriseDeParole(Base):
+    """Prise de parole d'un député en séance plénière (source : syceron)."""
+
+    __tablename__ = "prises_de_parole"
+
+    depute_id: Mapped[str] = mapped_column(
+        ForeignKey("deputes.id"), primary_key=True, index=True
+    )
+    seance_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    date: Mapped[date] = mapped_column(Date, index=True)
+    legislature: Mapped[int] = mapped_column(Integer, default=17)
+
+    depute: Mapped["Depute"] = relationship(back_populates="prises_de_parole")
 
 
 class Amendement(Base):
