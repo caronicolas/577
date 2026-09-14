@@ -12,6 +12,14 @@ on:
       - '.github/workflows/deploy-infra.yml'
   workflow_dispatch:
 
+# Plan + apply sérialisés avec les autres terraform apply de production
+# (deploy-backend, deploy-functions) : pas de verrou sur le backend S3.
+# queue: max évite l'annulation des runs en attente. Les PRs ont leur propre groupe.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('deploy-infra-pr-{0}', github.ref) || 'terraform-production' }}
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   plan:
     name: Terraform Plan
