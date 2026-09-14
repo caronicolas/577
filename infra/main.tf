@@ -2,8 +2,11 @@ terraform {
   required_version = ">= 1.9"
   required_providers {
     scaleway = {
-      source  = "scaleway/scaleway"
-      version = "~> 2.46"
+      source = "scaleway/scaleway"
+      # < 2.83.0 : la v2.83.0 change l'identité de scaleway_rdb_database/user/privilege
+      # et ne sait plus lire le state existant ("failed to decode identity").
+      # Voir scaleway/terraform-provider-scaleway#4211. Retirer quand corrigé.
+      version = "~> 2.46, < 2.83.0"
     }
   }
   backend "s3" {
