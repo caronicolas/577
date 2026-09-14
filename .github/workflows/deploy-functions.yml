@@ -12,6 +12,12 @@ jobs:
   build-deploy:
     name: Build ZIPs & Deploy
     runs-on: ubuntu-latest
+    # Un seul terraform apply à la fois sur le state de production (pas de verrou
+    # sur le backend S3). queue: max évite l'annulation des runs en attente.
+    concurrency:
+      group: terraform-production
+      cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@v5
 
