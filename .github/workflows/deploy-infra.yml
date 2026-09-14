@@ -32,9 +32,10 @@ jobs:
 
       - name: Compute ZIP hashes
         run: |
+          set -o pipefail
           HASHES="{"
           for name in scrutins organes deputes agenda amendements prises_de_parole post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
-            hash=$(sha256sum "infra/functions/${name}.zip" | awk '{print $1}')
+            hash=$(sha256sum "functions/${name}.zip" | awk '{print $1}')
             HASHES="${HASHES}\"${name}\":\"${hash}\","
           done
           HASHES="${HASHES%,}}"
@@ -53,6 +54,25 @@ jobs:
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
+      # L'image de l'API est gérée par deploy-backend.yml : on reprend le tag
+      # déjà déployé pour que ce workflow ne la modifie jamais (sinon défaut "latest",
+      # tag qui n'existe pas dans le registry).
+      - name: Tag de l'image API déployée
+        run: |
+          set -o pipefail
+          # state pull (JSON brut) plutôt que state show, qui échoue quand le state
+          # contient des attributs retirés du schéma du provider (ex. max_concurrency).
+          IMAGE=$(terraform state pull | jq -r '.resources[]
+            | select(.module == "module.containers" and .type == "scaleway_container" and .name == "api")
+            | .instances[0].attributes.registry_image // empty')
+          TAG="${IMAGE##*:}"
+          if [ -z "$TAG" ]; then
+            echo "::error::Impossible de lire registry_image dans le state"
+            exit 1
+          fi
+          echo "Tag API déployé : $TAG"
+          echo "TF_VAR_api_image_tag=$TAG" >> "$GITHUB_ENV"
+
       - name: Terraform Plan
         env:
           TF_VAR_scw_access_key: ${{ secrets.SCW_ACCESS_KEY }}
@@ -62,6 +82,7 @@ jobs:
           TF_VAR_bsky_identifier: ${{ secrets.BSKY_IDENTIFIER }}
           TF_VAR_bsky_app_password: ${{ secrets.BSKY_APP_PASSWORD }}
           TF_VAR_zip_hashes: ${{ env.TF_VAR_zip_hashes }}
+          TF_VAR_api_image_tag: ${{ env.TF_VAR_api_image_tag }}
         run: |
           terraform plan -out=tfplan \
             -target=module.database \
@@ -97,9 +118,10 @@ jobs:
 
       - name: Compute ZIP hashes
         run: |
+          set -o pipefail
           HASHES="{"
           for name in scrutins organes deputes agenda amendements prises_de_parole post_agenda post_commissions datan post_scrutins post_stats_hebdo; do
-            hash=$(sha256sum "infra/functions/${name}.zip" | awk '{print $1}')
+            hash=$(sha256sum "functions/${name}.zip" | awk '{print $1}')
             HASHES="${HASHES}\"${name}\":\"${hash}\","
           done
           HASHES="${HASHES%,}}"
