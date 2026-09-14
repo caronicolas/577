@@ -60,8 +60,12 @@ jobs:
       - name: Tag de l'image API déployée
         run: |
           set -o pipefail
-          TAG=$(terraform state show -no-color module.containers.scaleway_container.api \
-            | sed -n 's/^ *registry_image *= *".*:\([^"]*\)"$/\1/p')
+          # state pull (JSON brut) plutôt que state show, qui échoue quand le state
+          # contient des attributs retirés du schéma du provider (ex. max_concurrency).
+          IMAGE=$(terraform state pull | jq -r '.resources[]
+            | select(.module == "module.containers" and .type == "scaleway_container" and .name == "api")
+            | .instances[0].attributes.registry_image // empty')
+          TAG="${IMAGE##*:}"
           if [ -z "$TAG" ]; then
             echo "::error::Impossible de lire registry_image dans le state"
             exit 1
