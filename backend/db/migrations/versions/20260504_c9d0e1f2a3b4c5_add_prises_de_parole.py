@@ -1,7 +1,7 @@
 """add prises_de_parole table
 
 Revision ID: c9d0e1f2a3b4c5
-Revises: f5a6b7c8d9e0
+Revises: b2c3d4e5f6a7
 Create Date: 2026-05-04 00:00:00.000000+00:00
 
 """

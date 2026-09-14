@@ -71,7 +71,7 @@ jobs:
         run: python -m ingestion.assemblee.scrutins
 
       - name: prises_de_parole.py
-        if: contains(github.event.inputs.scripts, 'prises_de_parole')
+        if: contains(format(' {0} ', github.event.inputs.scripts), ' prises_de_parole ')
         working-directory: backend
         run: python -m ingestion.assemblee.prises_de_parole
 
